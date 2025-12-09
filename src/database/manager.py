@@ -48,7 +48,7 @@ class DatabaseManager:
             session.close()
     
     @asynccontextmanager
-    async def session_scope(self) -> AsyncGenerator[Session, None]:
+    async def async_session_scope(self) -> AsyncGenerator[Session, None]:
         """Provide an async transactional scope around a series of operations."""
         session = self.SessionLocal()
         try:
@@ -64,7 +64,7 @@ class DatabaseManager:
         """Execute database operation with retry logic."""
         for attempt in range(max_retries):
             try:
-                with self.session_scope() as session:
+                async with self.async_session_scope() as session:
                     return operation(session)
             except Exception as e:
                 if attempt == max_retries - 1:

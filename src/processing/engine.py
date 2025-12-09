@@ -116,7 +116,7 @@ class ProcessingEngine:
         Returns:
             List of questions to process
         """
-        async with self.db_manager.session_scope() as session:
+        async with self.db_manager.async_session_scope() as session:
             query = session.query(Question)
             
             # Filter out questions that already have responses

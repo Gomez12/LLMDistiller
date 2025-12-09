@@ -1,7 +1,7 @@
 """Base importer interface."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..database.models import Question
 
@@ -11,12 +11,12 @@ class QuestionData:
 
     def __init__(
         self,
-        json_id: str = None,
-        category: str = None,
-        question_text: str = None,
-        golden_answer: str = None,
-        answer_schema: str = None,
-        metadata: Dict[str, Any] = None,
+        json_id: Optional[str] = None,
+        category: Optional[str] = None,
+        question_text: Optional[str] = None,
+        golden_answer: Optional[str] = None,
+        answer_schema: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         self.json_id = json_id
         self.category = category
@@ -37,8 +37,8 @@ class ImportResult:
         success: bool,
         imported_count: int = 0,
         error_count: int = 0,
-        errors: List[str] = None,
-        metadata: Dict[str, Any] = None,
+        errors: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         self.success = success
         self.imported_count = imported_count

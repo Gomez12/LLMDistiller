@@ -146,7 +146,7 @@ class QuestionWorker:
             task: Original question task
             result: Processing result
         """
-        async with self.db_manager.session_scope() as session:
+        async with self.db_manager.async_session_scope() as session:
             response = Response(
                 question_id=task.question_id,
                 provider_name=result.provider_name,
@@ -167,7 +167,7 @@ class QuestionWorker:
             task: Original question task
             result: Processing result with error details
         """
-        async with self.db_manager.session_scope() as session:
+        async with self.db_manager.async_session_scope() as session:
             invalid_response = InvalidResponse(
                 question_id=task.question_id,
                 provider_name=result.provider_name,

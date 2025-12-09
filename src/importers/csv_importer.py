@@ -93,7 +93,7 @@ class CSVImporter(BaseImporter):
         error_count = 0
         errors = []
 
-        with self.db_manager.session_scope() as session:
+        async with self.db_manager.async_session_scope() as session:
             for question_data in data:
                 try:
                     # Check if question already exists
