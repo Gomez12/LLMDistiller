@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import random
+import traceback
 from typing import Dict, List, Optional, Type
 
 from ..config import ProviderConfig, Settings
@@ -35,22 +36,33 @@ class LLMProviderManager:
     
     def _initialize_providers(self) -> None:
         """Initialize all configured providers."""
+        logger.info(f"[DEBUG] Initializing {len(self.settings.llm_providers)} providers")
+        
         for name, config in self.settings.llm_providers.items():
             try:
+                logger.debug(f"[DEBUG] Initializing provider '{name}' of type '{config.type}'")
+                logger.debug(f"[DEBUG] Provider config: {config}")
+                
                 provider_class = self.provider_classes.get(config.type)
                 if not provider_class:
+                    logger.error(f"[ERROR] Unknown provider type '{config.type}' for provider '{name}'")
                     raise ValueError(f"Unknown provider type: {config.type}")
                 
                 # Initialize provider
                 provider = provider_class(config)
                 self.providers[name] = provider
+                logger.info(f"[DEBUG] Successfully initialized provider '{name}' with model '{provider.model_name}'")
                 
                 # Initialize rate limiter
                 rate_limiter = RateLimiter(config.rate_limit, name)
                 self.rate_limiters[name] = rate_limiter
+                logger.debug(f"[DEBUG] Initialized rate limiter for provider '{name}': {config.rate_limit}")
                 
             except Exception as e:
-                print(f"Failed to initialize provider '{name}': {e}")
+                logger.error(f"[ERROR] Failed to initialize provider '{name}': {e}")
+                logger.error(f"[ERROR] Exception type: {type(e).__name__}")
+                logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
+                logger.error(f"[ERROR] Provider config: {config}")
                 continue
     
     def get_provider(self, name: Optional[str] = None) -> Optional[BaseLLMProvider]:
@@ -114,34 +126,53 @@ class LLMProviderManager:
         Returns:
             WorkerResult with response or error details
         """
+        logger.debug(f"[DEBUG] Starting response generation with failover")
+        logger.debug(f"[DEBUG] Prompt (first 200 chars): {prompt[:200]}")
+        logger.debug(f"[DEBUG] Preferred provider: {preferred_provider}")
+        logger.debug(f"[DEBUG] Available providers: {list(self.providers.keys())}")
+        
         providers_to_try = []
         
         if preferred_provider and preferred_provider in self.providers:
             providers_to_try.append(preferred_provider)
+            logger.debug(f"[DEBUG] Added preferred provider '{preferred_provider}' to try list")
         
         # Add other providers for failover
         for provider_name in self.providers:
             if provider_name not in providers_to_try:
                 providers_to_try.append(provider_name)
         
+        logger.debug(f"[DEBUG] Provider try order: {providers_to_try}")
+        
         last_error = None
         
-        for provider_name in providers_to_try:
+        for i, provider_name in enumerate(providers_to_try):
             provider = self.providers[provider_name]
             rate_limiter = self.rate_limiters.get(provider_name)
+            
+            logger.debug(f"[DEBUG] Attempting provider {i+1}/{len(providers_to_try)}: {provider_name}")
+            logger.debug(f"[DEBUG] Provider model: {provider.model_name}")
             
             try:
                 # Apply rate limiting
                 if rate_limiter:
+                    logger.debug(f"[DEBUG] Checking rate limits for provider '{provider_name}'")
                     await rate_limiter.acquire()
+                    logger.debug(f"[DEBUG] Rate limit check passed for provider '{provider_name}'")
                 
                 # Generate response
+                logger.debug(f"[DEBUG] Calling generate_response on provider '{provider_name}'")
+                logger.debug(f"[DEBUG] Generation params: {self.settings.processing.generation_params}")
+                
                 response = await provider.generate_response(
                     prompt, 
                     self.settings.processing.generation_params
                 )
                 
                 logger.info(f"Successfully generated response using provider: {provider_name} (model: {response.model or provider.model_name})")
+                logger.debug(f"[DEBUG] Response content (first 200 chars): {response.content[:200] if response.content else 'None'}")
+                logger.debug(f"[DEBUG] Response tokens: {response.tokens_used}")
+                logger.debug(f"[DEBUG] Response metadata: {response.metadata}")
                 
                 return WorkerResult(
                     question_id=0,  # Will be set by caller
@@ -155,11 +186,21 @@ class LLMProviderManager:
                 
             except Exception as e:
                 last_error = str(e)
-                logger.warning(f"Provider {provider_name} failed: {e}")
+                logger.error(f"[ERROR] Provider {provider_name} failed (attempt {i+1}/{len(providers_to_try)})")
+                logger.error(f"[ERROR] Exception type: {type(e).__name__}")
+                logger.error(f"[ERROR] Exception message: {str(e)}")
+                logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
+                logger.error(f"[ERROR] Provider config: {provider.config if hasattr(provider, 'config') else 'N/A'}")
+                logger.error(f"[ERROR] Prompt used: {prompt}")
+                logger.error(f"[ERROR] Generation params: {self.settings.processing.generation_params}")
                 continue
         
         # All providers failed
-        logger.error(f"All providers failed. Last error: {last_error or 'All providers failed'}")
+        logger.error(f"[DEBUG] All {len(providers_to_try)} providers failed")
+        logger.error(f"[DEBUG] Providers attempted: {providers_to_try}")
+        logger.error(f"[DEBUG] Last error: {last_error or 'All providers failed'}")
+        logger.error(f"[DEBUG] Prompt that caused failure: {prompt}")
+        
         return WorkerResult(
             question_id=0,  # Will be set by caller
             provider_name=preferred_provider or "unknown",

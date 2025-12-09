@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import traceback
 from datetime import datetime
 from typing import List, Optional
 
@@ -165,39 +166,57 @@ class ProcessingEngine:
         Args:
             result: Processing result to update
         """
+        logger.info(f"[DEBUG] Starting main processing loop")
         self._running = True
         batch_size = self.settings.processing.batch_size
+        logger.debug(f"[DEBUG] Creating {batch_size} worker tasks")
         
         # Create worker tasks
         worker_tasks = []
         for i in range(batch_size):
             worker_task = asyncio.create_task(self._worker_loop(result))
             worker_tasks.append(worker_task)
+            logger.debug(f"[DEBUG] Created worker task {i}")
         
         try:
             # Wait for all tasks to be processed with timeout
             timeout = 30  # 30 seconds timeout
             start_time = asyncio.get_event_loop().time()
+            logger.debug(f"[DEBUG] Processing with {timeout}s timeout, started at {start_time}")
             
             while not await self.queue.is_empty():
                 await asyncio.sleep(0.1)
                 
                 # Check for timeout
-                if asyncio.get_event_loop().time() - start_time > timeout:
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if elapsed > timeout:
+                    logger.error(f"[ERROR] Processing timeout reached after {elapsed:.2f}s")
                     result.add_warning("Processing timeout reached")
                     break
                 
                 # Check for failed tasks that can be retried
+                logger.debug(f"[DEBUG] Checking for failed tasks to retry")
                 await self._retry_failed_tasks()
         
+        except Exception as e:
+            logger.error(f"[ERROR] Main processing loop failed")
+            logger.error(f"[ERROR] Exception type: {type(e).__name__}")
+            logger.error(f"[ERROR] Exception message: {str(e)}")
+            logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
+            result.add_error(f"Processing loop failed: {str(e)}")
+        
         finally:
+            logger.debug(f"[DEBUG] Cancelling {len(worker_tasks)} worker tasks")
             # Cancel worker tasks
-            for task in worker_tasks:
+            for i, task in enumerate(worker_tasks):
+                logger.debug(f"[DEBUG] Cancelling worker task {i}")
                 task.cancel()
             
             # Wait for tasks to finish
+            logger.debug(f"[DEBUG] Waiting for worker tasks to finish")
             await asyncio.gather(*worker_tasks, return_exceptions=True)
             self._running = False
+            logger.info(f"[DEBUG] Main processing loop completed")
     
     async def _worker_loop(self, result: ProcessingResult) -> None:
         """Worker loop for processing questions.
@@ -205,38 +224,62 @@ class ProcessingEngine:
         Args:
             result: Processing result to update
         """
+        worker_id = id(self)  # Unique identifier for this worker
+        logger.debug(f"[DEBUG] Starting worker loop for worker {worker_id}")
+        
         while self._running:
             try:
                 # Get next task from queue
+                logger.debug(f"[DEBUG] Worker {worker_id} getting next task from queue")
                 task = await self.queue.get_next_task()
                 if not task:
+                    logger.debug(f"[DEBUG] Worker {worker_id} no tasks available, continuing")
                     continue
                 
+                logger.debug(f"[DEBUG] Worker {worker_id} got task {task.question_id}")
+                logger.debug(f"[DEBUG] Task details: {task}")
+                
                 # Process the question
+                logger.debug(f"[DEBUG] Worker {worker_id} starting processing of question {task.question_id}")
                 worker_result = await self.worker.process_question(task)
+                logger.debug(f"[DEBUG] Worker {worker_id} completed processing of question {task.question_id}")
+                logger.debug(f"[DEBUG] Worker result: {worker_result}")
                 
                 # Update statistics
                 await self._update_stats(result, worker_result)
                 
                 # Mark task as completed
+                logger.debug(f"[DEBUG] Worker {worker_id} marking task {task.question_id} as completed (success: {worker_result.success})")
                 await self.queue.mark_completed(
                     task.question_id, 
                     worker_result.success
                 )
                 
             except asyncio.CancelledError:
+                logger.debug(f"[DEBUG] Worker {worker_id} cancelled, breaking loop")
                 break
             except Exception as e:
+                logger.error(f"[ERROR] Worker {worker_id} encountered error")
+                logger.error(f"[ERROR] Exception type: {type(e).__name__}")
+                logger.error(f"[ERROR] Exception message: {str(e)}")
+                logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
+                logger.error(f"[ERROR] Current result stats: {result.stats}")
                 result.add_error(f"Worker error: {str(e)}")
                 await asyncio.sleep(1)  # Prevent tight error loops
     
     async def _retry_failed_tasks(self) -> None:
         """Retry failed tasks that have retries available."""
+        logger.debug(f"[DEBUG] Checking for failed tasks to retry")
         failed_tasks = await self.queue.get_failed_tasks()
+        logger.debug(f"[DEBUG] Found {len(failed_tasks)} failed tasks")
         
         for task in failed_tasks:
+            logger.debug(f"[DEBUG] Considering retry for task {task.question_id}, current retry count: {task.retry_count}")
             if await self.queue.retry_task(task.question_id):
-                print(f"Retrying question {task.question_id} (attempt {task.retry_count})")
+                logger.info(f"[DEBUG] Retrying question {task.question_id} (attempt {task.retry_count})")
+                logger.debug(f"[DEBUG] Task details for retry: {task}")
+            else:
+                logger.debug(f"[DEBUG] Not retrying task {task.question_id} - max retries reached or other reason")
     
     async def _update_stats(self, result: ProcessingResult, worker_result: WorkerResult) -> None:
         """Update processing statistics.

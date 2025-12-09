@@ -25,11 +25,27 @@ def cli(ctx, config: Optional[str]):
     
     # Setup logging
     logging_config = ctx.obj["settings"].logging
+    
+    # Set log level - use DEBUG for TRACE since we can't easily add custom levels
+    log_level_str = logging_config.level.upper()
+    if log_level_str == "TRACE":
+        log_level = logging.DEBUG  # Use DEBUG level for TRACE
+    else:
+        log_level = getattr(logging, log_level_str)
+    
     logging.basicConfig(
-        level=getattr(logging, logging_config.level.upper()),
+        level=log_level,
         format=logging_config.format,
         filename=logging_config.file_path
     )
+    
+    # Also log to console for errors and above if enabled
+    if logging_config.console_errors:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.ERROR)
+        console_formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        logging.getLogger().addHandler(console_handler)
     
     ctx.obj["db_manager"] = DatabaseManager(
         database_url=ctx.obj["settings"].database.url,

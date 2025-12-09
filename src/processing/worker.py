@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import time
+import traceback
 from typing import Optional
 
 from ..database.models import InvalidResponse, Question, Response
@@ -46,8 +47,12 @@ class QuestionWorker:
         """
         start_time = time.time()
         
+        logger.debug(f"[DEBUG] Starting processing of question {task.question_id} with text: {task.question_text[:100]}...")
+        logger.debug(f"[DEBUG] Task details - Category: {task.category}, Provider: {task.provider_name}, Max retries: {task.max_retries}")
+        
         try:
             # Generate response using LLM
+            logger.debug(f"[DEBUG] Calling provider manager for question {task.question_id}")
             result = await self.provider_manager.generate_response_with_failover(
                 prompt=task.question_text,
                 preferred_provider=task.provider_name
@@ -57,22 +62,42 @@ class QuestionWorker:
             result.question_id = task.question_id
             
             logger.info(f"Processing question {task.question_id} with provider: {result.provider_name}")
+            logger.debug(f"[DEBUG] Provider response - Success: {result.success}, Model: {result.model_name}, Tokens: {result.tokens_used}")
             
             if not result.success:
-                # Store as invalid response
-                logger.warning(f"Failed to process question {task.question_id} with provider {result.provider_name}: {result.error_message}")
+                # Store as invalid response with verbose error logging
+                logger.error(f"[ERROR] Failed to process question {task.question_id} with provider {result.provider_name}")
+                logger.error(f"[ERROR] Error type: {result.error_type}")
+                logger.error(f"[ERROR] Error message: {result.error_message}")
+                logger.error(f"[ERROR] Processing time: {result.processing_time_ms}ms")
+                logger.error(f"[ERROR] Tokens used: {result.tokens_used}")
+                if result.validation_errors:
+                    logger.error(f"[ERROR] Validation errors: {result.validation_errors}")
+                logger.error(f"[DEBUG] Full task context: {task}")
+                logger.error(f"[DEBUG] Full result context: {result}")
+                
                 await self._store_invalid_response(task, result)
                 return result
             
             # Validate response if schema validation is enabled
             validation_errors = None
             if self.validate_responses and task.answer_schema:
+                logger.debug(f"[DEBUG] Validating response for question {task.question_id} against schema")
+                logger.debug(f"[DEBUG] Response text (first 200 chars): {result.response_text[:200] if result.response_text else 'None'}")
+                logger.debug(f"[DEBUG] Schema: {task.answer_schema}")
+                
                 validation_errors = await self._validate_response(
                     result.response_text, task.answer_schema
                 )
                 
                 if validation_errors:
-                    # Store as invalid response due to schema validation failure
+                    # Store as invalid response due to schema validation failure with verbose logging
+                    logger.error(f"[ERROR] Schema validation failed for question {task.question_id}")
+                    logger.error(f"[ERROR] Provider: {result.provider_name}, Model: {result.model_name}")
+                    logger.error(f"[ERROR] Validation errors: {validation_errors}")
+                    logger.error(f"[ERROR] Response text: {result.response_text}")
+                    logger.error(f"[ERROR] Schema: {task.answer_schema}")
+                    
                     invalid_result = WorkerResult(
                         question_id=task.question_id,
                         provider_name=result.provider_name,
@@ -100,7 +125,15 @@ class QuestionWorker:
             return result
             
         except Exception as e:
-            # Handle unexpected errors
+            # Handle unexpected errors with verbose logging
+            logger.error(f"[ERROR] Unexpected error processing question {task.question_id}")
+            logger.error(f"[ERROR] Exception type: {type(e).__name__}")
+            logger.error(f"[ERROR] Exception message: {str(e)}")
+            logger.error(f"[ERROR] Full traceback: {traceback.format_exc()}")
+            logger.error(f"[ERROR] Task context: {task}")
+            logger.error(f"[ERROR] Provider manager: {self.provider_manager}")
+            logger.error(f"[ERROR] Processing time so far: {int((time.time() - start_time) * 1000)}ms")
+            
             error_result = WorkerResult(
                 question_id=task.question_id,
                 provider_name=task.provider_name or "unknown",
@@ -129,25 +162,46 @@ class QuestionWorker:
             List of validation errors, or None if valid
         """
         try:
+            logger.debug(f"[DEBUG] Starting validation of response")
+            logger.debug(f"[DEBUG] Response text: {response_text}")
+            logger.debug(f"[DEBUG] Schema JSON: {schema_json}")
+            
             if not response_text:
+                logger.error(f"[ERROR] Response text is empty during validation")
                 return ["Response text is empty"]
                 
             schema = json.loads(schema_json)
+            logger.debug(f"[DEBUG] Parsed schema successfully: {schema}")
+            
             if self.schema_validator:
+                logger.debug(f"[DEBUG] Calling schema validator")
                 validation_result = self.schema_validator.validate_response(
                     response_text, schema
                 )
                 
+                logger.debug(f"[DEBUG] Validation result - Valid: {validation_result.is_valid}, Errors: {validation_result.errors}")
+                
                 if validation_result.is_valid:
+                    logger.debug(f"[DEBUG] Validation passed")
                     return None
                 else:
+                    logger.error(f"[ERROR] Schema validation failed with errors: {validation_result.errors}")
+                    logger.error(f"[ERROR] Response that failed: {response_text}")
+                    logger.error(f"[ERROR] Schema used: {schema}")
                     return validation_result.errors
             else:
+                logger.warning(f"[DEBUG] No schema validator available, skipping validation")
                 return None  # Skip validation if no validator
                 
-        except json.JSONDecodeError:
-            return ["Invalid JSON schema"]
+        except json.JSONDecodeError as e:
+            logger.error(f"[ERROR] JSON decode error during validation: {e}")
+            logger.error(f"[ERROR] Invalid schema JSON: {schema_json}")
+            return [f"Invalid JSON schema: {str(e)}"]
         except Exception as e:
+            logger.error(f"[ERROR] Unexpected validation error: {e}")
+            logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
+            logger.error(f"[ERROR] Response text: {response_text}")
+            logger.error(f"[ERROR] Schema JSON: {schema_json}")
             return [f"Validation error: {str(e)}"]
     
     async def _store_valid_response(self, task: QuestionTask, result: WorkerResult) -> None:

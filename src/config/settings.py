@@ -103,12 +103,13 @@ class ProcessingConfig(BaseModel):
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
-    level: str = Field(default="INFO", description="Log level")
+    level: str = Field(default="INFO", description="Log level (DEBUG, INFO, WARNING, ERROR, TRACE)")
     file_path: Optional[str] = Field(default=None, description="Log file path")
     format: str = Field(
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log format string",
     )
+    console_errors: bool = Field(default=True, description="Also log errors to console")
 
 
 class Settings(BaseModel):
