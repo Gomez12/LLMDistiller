@@ -125,14 +125,37 @@ class Settings(BaseModel):
     @classmethod
     def load(cls, config_path: Optional[str] = None) -> "Settings":
         """Load settings from file with environment overrides."""
-        if config_path and os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    config_data = json.load(f)
-                return cls(**config_data)
-            except Exception as e:
-                print(f"Warning: Failed to load config from {config_path}: {e}")
-                print("Using default settings")
+        
+        # Determine config file paths to try (in order)
+        config_paths = []
+        
+        if config_path:
+            config_paths.append(config_path)
+        else:
+            # Try default locations in order
+            config_paths.extend([
+                "config.json",           # Current directory
+                "config/config.json",     # Config subdirectory  
+                os.path.expanduser("~/.llm_distiller/config.json")  # User config
+            ])
+        
+        # Try each path until one works
+        for path in config_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r') as f:
+                        config_data = json.load(f)
+                    print(f"Loaded configuration from: {path}")
+                    return cls(**config_data)
+                except Exception as e:
+                    print(f"Warning: Failed to load config from {path}: {e}")
+                    continue
+        
+        # No config found - use defaults
+        if not config_path:  # Only show warning if no explicit config was requested
+            print("No configuration file found. Using default settings.")
+            print("Create a config.json file or use --config to specify one.")
+            print("Example: cp config.example.json config.json")
         
         return cls()
 

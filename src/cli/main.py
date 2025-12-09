@@ -47,6 +47,14 @@ def cli(ctx, config: Optional[str]):
         console_handler.setFormatter(console_formatter)
         logging.getLogger().addHandler(console_handler)
     
+    # Log configuration summary
+    logger = logging.getLogger(__name__)
+    logger.info(f"Configuration loaded with {len(ctx.obj['settings'].llm_providers)} LLM providers")
+    if ctx.obj["settings"].llm_providers:
+        logger.info(f"Available providers: {', '.join(ctx.obj['settings'].llm_providers.keys())}")
+    else:
+        logger.warning("No LLM providers configured - processing will fail")
+    
     ctx.obj["db_manager"] = DatabaseManager(
         database_url=ctx.obj["settings"].database.url,
         echo=ctx.obj["settings"].database.echo,
@@ -126,7 +134,20 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
             if available_providers:
                 click.echo(f"No provider specified, will use load balancing across: {', '.join(available_providers)}")
             else:
-                click.echo("Warning: No providers configured")
+                click.echo("❌ No LLM providers configured!")
+                click.echo("")
+                click.echo("To fix this:")
+                click.echo("1. Create a config.json file:")
+                click.echo("   cp config.example.json config.json")
+                click.echo("   # Edit config.json with your API keys and settings")
+                click.echo("")
+                click.echo("2. Or specify a config file:")
+                click.echo("   python -m src.main process --config your-config.json")
+                click.echo("")
+                click.echo("3. Or set environment variables (limited support):")
+                click.echo("   export OPENAI_API_KEY='your-key'")
+                click.echo("")
+                return
         
         result = await engine.process_questions(
             category=category,
