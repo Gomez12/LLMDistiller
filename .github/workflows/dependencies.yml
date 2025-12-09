@@ -53,7 +53,7 @@ jobs:
 
     - name: Run Safety vulnerability check
       run: |
-        safety check --json --output safety-report.json || true
+        safety check --json --output-file safety-report.json || true
         safety check --full-report || true
 
     - name: Run pip-audit vulnerability check

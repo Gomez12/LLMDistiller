@@ -308,8 +308,8 @@ jobs:
 
     - name: Run Safety dependency scan
       run: |
-        safety check --json --output=safety-deps.json || true
-        safety check --full-report --output=safety-deps.txt || true
+        safety check --json --output-file safety-deps.json || true
+        safety check --full-report --output-file safety-deps.txt || true
 
     - name: Run pip-audit dependency scan
       run: |
