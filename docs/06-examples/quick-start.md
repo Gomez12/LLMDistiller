@@ -7,7 +7,7 @@ Welkom bij de LLM Distiller! Deze gids helpt je om snel aan de slag te gaan met 
 ### 1. Installatie
 ```bash
 # Clone de repository
-git clone https://github.com/your-username/LLMDistiller.git
+git clone https://github.com/Gomez12/LLMDistiller.git
 cd LLMDistiller
 
 # Setup virtuele omgeving
@@ -17,6 +17,9 @@ source venv/bin/activate  # Linux/macOS
 
 # Installeer dependencies
 pip install -r requirements.txt
+
+# Installeer het package in development mode
+pip install -e .
 ```
 
 ### 2. Initialisatie
