@@ -11,6 +11,29 @@ Voorbeelden voor:
 - **High-throughput**: Grootschalige verwerking
 - **Cost-optimized**: Kostenbesparende configuraties
 
+## 🚀 Quick Start
+
+Gebruik het meegeleverde `config.example.json` bestand als startpunt:
+
+```bash
+# Kopieer de voorbeeld configuratie
+cp config.example.json config.json
+
+# Bewerk met je instellingen
+nano config.json
+```
+
+Het voorbeeld bevat drie vooraf geconfigureerde providers:
+1. **openai_main**: OpenAI API (standaard)
+2. **local_ollama**: Lokale Ollama server
+3. **azure_openai**: Azure OpenAI service
+
+Voeg je API keys toe via environment variables:
+```bash
+export OPENAI_API_KEY="jouw-openai-key"
+export AZURE_OPENAI_API_KEY="jouw-azure-key"
+```
+
 ## 🛠️ Development Setup
 
 ### Basic Development

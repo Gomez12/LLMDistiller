@@ -436,51 +436,27 @@ De LLM Distiller zoekt configuratie in de volgende volgorde:
 
 ### Configuratie Template
 
-**config/config.json.example:**
-```json
-{
-  "database": {
-    "url": "sqlite:///llm_distiller.db",
-    "echo": false
-  },
-  "llm_providers": {
-    "openai_main": {
-      "type": "openai",
-      "api_key": "",
-      "base_url": "https://api.openai.com/v1",
-      "model": "gpt-3.5-turbo",
-      "rate_limit": {
-        "requests_per_minute": 60,
-        "tokens_per_minute": 90000
-      },
-      "default": true
-    },
-    "local_ollama": {
-      "type": "openai",
-      "api_key": "ollama",
-      "base_url": "http://localhost:11434/v1",
-      "model": "llama2",
-      "rate_limit": {
-        "requests_per_minute": 1000,
-        "tokens_per_minute": 1000000
-      }
-    }
-  },
-  "default_provider": "openai_main",
-  "processing": {
-    "batch_size": 10,
-    "max_retries": 3,
-    "retry_delay": 1.0,
-    "timeout": 30.0
-  },
-  "logging": {
-    "level": "DEBUG",
-    "file": "logs/llm_distiller.log",
-    "max_size": "10MB",
-    "backup_count": 5
-  }
-}
+**config.example.json:**
+Een complete voorbeeld configuratie is beschikbaar in de project root als `config.example.json`. Deze bevat voorbeelden voor:
+
+- **OpenAI provider**: Standaard OpenAI API configuratie
+- **Azure OpenAI provider**: Azure OpenAI service configuratie  
+- **Local Ollama provider**: Lokale Ollama server configuratie
+- **Database settings**: SQLite database configuratie
+- **Processing parameters**: Batch processing en retry instellingen
+- **Logging configuratie**: Log level en format instellingen
+
+Kopieer dit bestand naar `config.json` en pas de waarden aan voor je omgeving:
+
+```bash
+cp config.example.json config.json
 ```
+
+Belangrijke velden om aan te passen:
+- `llm_providers.*.api_key`: Voeg je API keys toe (of gebruik environment variables)
+- `database.url`: Pas aan voor je database setup
+- `processing.batch_size`: Optimaliseer voor je systeem
+- `logging.level`: Pas aan voor gewenste verboseheid
 
 ## 🔍 Configuratie Validatie
 
