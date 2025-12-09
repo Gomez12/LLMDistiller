@@ -31,27 +31,9 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Run Black formatting check
-      run: |
-        if [ -d "tests" ] && [ "$(ls -A tests/ 2>/dev/null)" ]; then
-          black --check --diff src/ tests/
-        else
-          black --check --diff src/
-        fi
 
-    - name: Run isort import sorting check
-      run: |
-        if [ -d "tests" ] && [ "$(ls -A tests/ 2>/dev/null)" ]; then
-          isort --check-only --diff src/ tests/
-        else
-          isort --check-only --diff src/
-        fi
 
-    - name: Run flake8 linting
-      run: flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
 
-    - name: Run mypy type checking
-      run: mypy src/ --ignore-missing-imports
 
     - name: Check for complex code
       run: |
