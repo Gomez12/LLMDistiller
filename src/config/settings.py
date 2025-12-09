@@ -94,6 +94,9 @@ class ProcessingConfig(BaseModel):
     validate_responses: bool = Field(
         default=True, description="Enable JSON schema validation"
     )
+    generation_params: GenerationConfig = Field(
+        default_factory=GenerationConfig, description="Default generation parameters"
+    )
 
 
 class LoggingConfig(BaseModel):

@@ -1,9 +1,12 @@
 """Base LLM provider interface."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from ..config import GenerationConfig, ProviderConfig
+
+if TYPE_CHECKING:
+    from ..utils.rate_limiter import RateLimiter
 
 
 class ParsedResponse:
@@ -51,7 +54,7 @@ class BaseLLMProvider(ABC):
         """
 
     @abstractmethod
-    def get_rate_limiter(self):
+    def get_rate_limiter(self) -> Optional["RateLimiter"]:
         """Get provider-specific rate limiter."""
 
     @abstractmethod

@@ -1,13 +1,16 @@
 """OpenAI LLM provider implementation."""
 
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import openai
 from openai import AsyncOpenAI
 
 from ..config import GenerationConfig, ProviderConfig
 from .base import BaseLLMProvider, ParsedResponse
+
+if TYPE_CHECKING:
+    from ..utils.rate_limiter import RateLimiter
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -86,10 +89,10 @@ class OpenAIProvider(BaseLLMProvider):
         except Exception as e:
             raise Exception(f"Unexpected error generating response: {e}")
 
-    def get_rate_limiter(self):
+    def get_rate_limiter(self) -> Optional["RateLimiter"]:
         """Get OpenAI-specific rate limiter."""
-        # This will be implemented when we create the rate limiting system
-        return None
+        from ..utils.rate_limiter import RateLimiter
+        return RateLimiter(self.config.rate_limit, "openai")
 
     def parse_response(self, raw_response: Any) -> ParsedResponse:
         """Parse OpenAI API response.

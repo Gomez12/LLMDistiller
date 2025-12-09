@@ -111,11 +111,14 @@ Breng kennis over van grote naar kleine modellen:
 - [x] Multi-provider LLM support
 - [x] JSON schema validatie
 - [x] CLI interface
+- [x] Processing engine met queue management
+- [x] Rate limiting en retry logic
+- [x] Parallel processing capabilities
 
 ### Fase 2: Enhanced Features
 - [ ] Gradio web interface
 - [ ] Advanced analytics
-- [ ] Batch optimization
+- [x] Batch optimization
 - [ ] Custom model support
 
 ### Fase 3: Enterprise Features

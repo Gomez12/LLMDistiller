@@ -85,8 +85,51 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
     if provider:
         click.echo(f"Using provider: {provider}")
 
-    # This will be implemented when we create the processing engine
-    click.echo("Processing engine not yet implemented.")
+    async def run_processing():
+        from ..processing import ProcessingEngine
+        
+        engine = ProcessingEngine(
+            db_manager=ctx.obj["db_manager"],
+            settings=ctx.obj["settings"]
+        )
+        
+        result = await engine.process_questions(
+            category=category,
+            limit=limit,
+            provider=provider
+        )
+        
+        # Display results
+        if result.success:
+            click.echo(f"✅ Processing completed successfully!")
+            click.echo(f"📊 Results:")
+            click.echo(f"   Total questions: {result.stats.total_questions}")
+            click.echo(f"   Processed: {result.stats.processed_questions}")
+            click.echo(f"   Successful: {result.stats.successful_responses}")
+            click.echo(f"   Failed: {result.stats.failed_responses}")
+            click.echo(f"   Invalid: {result.stats.invalid_responses}")
+            
+            if result.stats.processing_time_seconds > 0:
+                click.echo(f"   Processing time: {result.stats.processing_time_seconds:.1f}s")
+                click.echo(f"   Speed: {result.stats.questions_per_second:.1f} questions/sec")
+            
+            if result.stats.total_tokens_used > 0:
+                click.echo(f"   Total tokens: {result.stats.total_tokens_used:,}")
+                click.echo(f"   Avg tokens/question: {result.stats.average_tokens_per_question:.0f}")
+            
+            if result.errors:
+                click.echo(f"⚠️  Warnings/Errors:")
+                for error in result.errors[:5]:
+                    click.echo(f"   • {error}")
+                if len(result.errors) > 5:
+                    click.echo(f"   ... and {len(result.errors) - 5} more")
+        else:
+            click.echo(f"❌ Processing failed!")
+            for error in result.errors:
+                click.echo(f"   • {error}")
+
+    import asyncio
+    asyncio.run(run_processing())
 
 
 @cli.command()

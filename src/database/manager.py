@@ -1,7 +1,7 @@
 """Database connection and session management."""
 
-from contextlib import contextmanager
-from typing import Generator, Optional
+from contextlib import asynccontextmanager, contextmanager
+from typing import AsyncGenerator, Generator, Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -37,6 +37,19 @@ class DatabaseManager:
     @contextmanager
     def session_scope(self) -> Generator[Session, None, None]:
         """Provide a transactional scope around a series of operations."""
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+    
+    @asynccontextmanager
+    async def session_scope(self) -> AsyncGenerator[Session, None]:
+        """Provide an async transactional scope around a series of operations."""
         session = self.SessionLocal()
         try:
             yield session

@@ -223,38 +223,49 @@ llm-distiller process [OPTIONS]
 
 #### Options
 ```bash
---provider TEXT       LLM provider naam (default: uit config)
---limit INTEGER       Maximum aantal vragen om te verwerken
---question-ids TEXT   Comma-separated lijst van vraag IDs
---category TEXT       Verwerk alleen specifieke categorie
---batch-size INTEGER  Batch size (default: uit config)
---model TEXT          Specifiek model naam
---temperature FLOAT   Temperature parameter
---max-tokens INTEGER  Maximum tokens
---dry-run             Toon wat verwerkt zou worden
---continue-on-error   Ga door bij fouten
---retry-failed        Probeer gefaalde vragen opnieuw
+--category TEXT       Filter by category
+--limit INTEGER       Number of questions to process (default: 10)
+--provider TEXT       LLM provider to use
 ```
 
 #### Voorbeelden
 ```bash
-# Verwerk 10 vragen met default provider
+# Verwerk 10 vragen met default settings
 llm-distiller process --limit 10
 
-# Verwerk specifieke vragen
-llm-distiller process --question-ids 1,2,3,4,5
+# Verwerk specifieke categorie
+llm-distiller process --category math
 
-# Verwerk categorie met specifieke provider
-llm-distiller process --category math --provider openai_main
+# Verwerk met specifieke provider
+llm-distiller process --provider openai --limit 5
 
-# Verwerk met custom parameters
-llm-distiller process --model gpt-4 --temperature 0.1 --max-tokens 500
+# Combineer filters
+llm-distiller process --category science --limit 20 --provider gpt4
+```
 
-# Verwerk gefaalde vragen opnieuw
-llm-distiller process --retry-failed
+#### Processing Features
+- **Parallel Processing**: Verwerkt vragen in batches (configurable batch size)
+- **Rate Limiting**: Respecteert API rate limits per provider
+- **Retry Logic**: Automatische retries met exponential backoff
+- **Multi-Provider Support**: Failover tussen providers
+- **JSON Schema Validation**: Valideert responses tegen schema
+- **Progress Tracking**: Real-time voortgang en statistieken
+- **Error Handling**: Gedetailleerde error reporting
 
-# Dry run om te testen
-llm-distiller process --limit 5 --dry-run
+#### Output Example
+```
+Processing 10 questions...
+✅ Processing completed successfully!
+📊 Results:
+   Total questions: 10
+   Processed: 10
+   Successful: 8
+   Failed: 2
+   Invalid: 1
+   Processing time: 15.2s
+   Speed: 0.7 questions/sec
+   Total tokens: 12,450
+   Avg tokens/question: 1,245
 ```
 
 ### Process Status
