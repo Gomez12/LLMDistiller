@@ -1,4 +1,5 @@
-git pull
+git fetch origin
+git reset --hard origin/main
 uv pip install -r requirements.txt
 uv pip uninstall llm-distiller
 uv pip install -e .
