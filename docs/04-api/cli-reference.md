@@ -251,10 +251,12 @@ llm-distiller process --category science --limit 20 --provider gpt4
 - **JSON Schema Validation**: Valideert responses tegen schema
 - **Progress Tracking**: Real-time voortgang en statistieken
 - **Error Handling**: Gedetailleerde error reporting
+- **Provider Logging**: Volledige logging van provider selectie en gebruik op INFO niveau
 
 #### Output Example
 ```
 Processing 10 questions...
+Using provider: openai_main
 ✅ Processing completed successfully!
 📊 Results:
    Total questions: 10
@@ -266,6 +268,32 @@ Processing 10 questions...
    Speed: 0.7 questions/sec
    Total tokens: 12,450
    Avg tokens/question: 1,245
+```
+
+#### Provider Logging
+De process command toont gedetailleerde logging over provider selectie en gebruik:
+
+**CLI Output:**
+- `Using provider: [provider]` - Wanneer specifieke provider is opgegeven
+- `No provider specified, will use load balancing across: [providers]` - Wanneer geen provider is opgegeven
+- `Warning: No providers configured` - Wanneer er geen providers zijn geconfigureerd
+
+**Log Output (INFO niveau):**
+- `Using specified provider: [provider]` - Provider selectie in engine
+- `No provider specified, will use load balancing across: [providers]` - Load balancing actief
+- `Processing question [id] with provider: [provider]` - Start verwerking
+- `Successfully generated response using provider: [provider] (model: [model])` - Succesvolle response
+- `Provider [provider] failed: [error]` - Provider fout
+- `All providers failed. Last error: [error]` - Alle providers gefaald
+
+**Voorbeeld met logging:**
+```
+Processing 1 questions...
+Using provider: local_ollama
+2025-12-09 13:45:04,618 - src.processing.engine - INFO - Using specified provider: local_ollama
+2025-12-09 13:45:04,720 - src.processing.manager - INFO - Successfully generated response using provider: local_ollama (model: llama2)
+2025-12-09 13:45:04,721 - src.processing.worker - INFO - Processing question 1 with provider: local_ollama
+2025-12-09 13:45:04,722 - src.processing.worker - INFO - Successfully processed question 1 with provider local_ollama
 ```
 
 ### Process Status

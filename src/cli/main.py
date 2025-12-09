@@ -1,6 +1,7 @@
 """CLI interface for LLM Distiller."""
 
 import asyncio
+import logging
 import os
 from typing import Optional
 
@@ -21,6 +22,15 @@ def cli(ctx, config: Optional[str]):
     """LLM Distiller - Create high-quality datasets for fine-tuning."""
     ctx.ensure_object(dict)
     ctx.obj["settings"] = Settings.load(config)
+    
+    # Setup logging
+    logging_config = ctx.obj["settings"].logging
+    logging.basicConfig(
+        level=getattr(logging, logging_config.level.upper()),
+        format=logging_config.format,
+        filename=logging_config.file_path
+    )
+    
     ctx.obj["db_manager"] = DatabaseManager(
         database_url=ctx.obj["settings"].database.url,
         echo=ctx.obj["settings"].database.echo,
@@ -92,6 +102,15 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
             db_manager=ctx.obj["db_manager"],
             settings=ctx.obj["settings"]
         )
+        
+        if provider:
+            click.echo(f"Using provider: {provider}")
+        else:
+            available_providers = list(ctx.obj["settings"].llm_providers.keys())
+            if available_providers:
+                click.echo(f"No provider specified, will use load balancing across: {', '.join(available_providers)}")
+            else:
+                click.echo("Warning: No providers configured")
         
         result = await engine.process_questions(
             category=category,

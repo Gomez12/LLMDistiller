@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import time
 from typing import Optional
 
@@ -9,6 +10,8 @@ from ..database.models import InvalidResponse, Question, Response
 from ..validators.schema_validator import SchemaValidator
 from .manager import LLMProviderManager
 from .models import QuestionTask, WorkerResult
+
+logger = logging.getLogger(__name__)
 
 
 class QuestionWorker:
@@ -53,8 +56,11 @@ class QuestionWorker:
             # Set question ID
             result.question_id = task.question_id
             
+            logger.info(f"Processing question {task.question_id} with provider: {result.provider_name}")
+            
             if not result.success:
                 # Store as invalid response
+                logger.warning(f"Failed to process question {task.question_id} with provider {result.provider_name}: {result.error_message}")
                 await self._store_invalid_response(task, result)
                 return result
             
@@ -89,6 +95,8 @@ class QuestionWorker:
             processing_time = int((time.time() - start_time) * 1000)
             result.processing_time_ms = processing_time
             
+            logger.info(f"Successfully processed question {task.question_id} with provider {result.provider_name}")
+            
             return result
             
         except Exception as e:
@@ -108,7 +116,7 @@ class QuestionWorker:
     
     async def _validate_response(
         self, 
-        response_text: str, 
+        response_text: Optional[str], 
         schema_json: str
     ) -> Optional[list]:
         """Validate response against JSON schema.
@@ -121,6 +129,9 @@ class QuestionWorker:
             List of validation errors, or None if valid
         """
         try:
+            if not response_text:
+                return ["Response text is empty"]
+                
             schema = json.loads(schema_json)
             if self.schema_validator:
                 validation_result = self.schema_validator.validate_response(

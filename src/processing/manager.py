@@ -1,6 +1,7 @@
 """LLM Provider Manager for coordinating multiple LLM providers."""
 
 import asyncio
+import logging
 import random
 from typing import Dict, List, Optional, Type
 
@@ -9,6 +10,8 @@ from ..llm.base import BaseLLMProvider
 from ..llm.openai_provider import OpenAIProvider
 from ..utils.rate_limiter import RateLimiter
 from .models import WorkerResult
+
+logger = logging.getLogger(__name__)
 
 
 class LLMProviderManager:
@@ -138,6 +141,8 @@ class LLMProviderManager:
                     self.settings.processing.generation_params
                 )
                 
+                logger.info(f"Successfully generated response using provider: {provider_name} (model: {response.model or provider.model_name})")
+                
                 return WorkerResult(
                     question_id=0,  # Will be set by caller
                     provider_name=provider_name,
@@ -150,10 +155,11 @@ class LLMProviderManager:
                 
             except Exception as e:
                 last_error = str(e)
-                print(f"Provider {provider_name} failed: {e}")
+                logger.warning(f"Provider {provider_name} failed: {e}")
                 continue
         
         # All providers failed
+        logger.error(f"All providers failed. Last error: {last_error or 'All providers failed'}")
         return WorkerResult(
             question_id=0,  # Will be set by caller
             provider_name=preferred_provider or "unknown",

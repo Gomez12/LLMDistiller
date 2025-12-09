@@ -9,6 +9,7 @@ De import system is ontworpen voor:
 - **Validatie**: Data validatie en error handling
 - **Performance**: Batch processing voor grote datasets
 - **Extensibility**: Makkelijk uitbreidbaar met nieuwe importers
+- **Provider Agnostic**: Importeert data zonder provider binding - provider wordt bepaald tijdens processing
 
 ## 🏗️ Importer Architecture
 
@@ -145,7 +146,14 @@ from typing import List, Dict, Optional
 import chardet
 
 class CSVImporter(BaseImporter):
-    """Import questions from CSV files"""
+    """Import questions from CSV files
+    
+    Belangrijk: CSV import bevat geen provider informatie.
+    Provider wordt bepaald tijdens de processing fase via:
+    1. CLI --provider parameter (hoogste prioriteit)
+    2. Random selectie uit beschikbare providers (load balancing)
+    3. Failover naar andere providers bij fouten
+    """
     
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)

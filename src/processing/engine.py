@@ -1,6 +1,7 @@
 """Main processing engine for LLM Distiller."""
 
 import asyncio
+import logging
 from datetime import datetime
 from typing import List, Optional
 
@@ -10,6 +11,8 @@ from .manager import LLMProviderManager
 from .models import ProcessingResult, ProcessingStats, QuestionTask, ProcessingStatus, WorkerResult
 from .queue import QuestionQueue
 from .worker import QuestionWorker
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessingEngine:
@@ -66,19 +69,29 @@ class ProcessingEngine:
                 result.add_warning("No questions found to process")
                 return result
             
+            # Log provider selection
+            if provider:
+                logger.info(f"Using specified provider: {provider}")
+            else:
+                available_providers = self.provider_manager.get_available_providers()
+                if available_providers:
+                    logger.info(f"No provider specified, will use load balancing across: {', '.join(available_providers)}")
+                else:
+                    logger.warning("No providers configured")
+            
             # Create tasks and add to queue
-            tasks = [
-                QuestionTask(
-                    question_id=q.id,
-                    category=q.category,
-                    question_text=q.question_text,
-                    golden_answer=q.golden_answer,
-                    answer_schema=q.answer_schema,
+            tasks = []
+            for q in questions:
+                task = QuestionTask(
+                    question_id=q['id'],
+                    category=q['category'],
+                    question_text=q['question_text'],
+                    golden_answer=q['golden_answer'],
+                    answer_schema=q['answer_schema'],
                     provider_name=provider,
                     max_retries=self.settings.processing.max_retries
                 )
-                for q in questions
-            ]
+                tasks.append(task)
             
             await self.queue.add_tasks(tasks)
             result.stats.start_time = datetime.utcnow()
@@ -106,7 +119,7 @@ class ProcessingEngine:
         self, 
         category: Optional[str], 
         limit: Optional[int]
-    ) -> List[Question]:
+    ) -> List[dict]:
         """Load questions from database.
         
         Args:
@@ -114,7 +127,7 @@ class ProcessingEngine:
             limit: Maximum number of questions
             
         Returns:
-            List of questions to process
+            List of question dictionaries to process
         """
         async with self.db_manager.async_session_scope() as session:
             query = session.query(Question)
@@ -131,18 +144,18 @@ class ProcessingEngine:
             
             questions = query.all()
             
-            # Convert to dict to avoid session binding issues
+            # Convert to dictionaries to avoid session binding issues
             return [
-                Question(
-                    id=q.id,
-                    json_id=q.json_id,
-                    category=q.category,
-                    question_text=q.question_text,
-                    golden_answer=q.golden_answer,
-                    answer_schema=q.answer_schema,
-                    created_at=q.created_at,
-                    updated_at=q.updated_at
-                )
+                {
+                    'id': q.id,
+                    'json_id': q.json_id,
+                    'category': q.category,
+                    'question_text': q.question_text,
+                    'golden_answer': q.golden_answer,
+                    'answer_schema': q.answer_schema,
+                    'created_at': q.created_at,
+                    'updated_at': q.updated_at
+                }
                 for q in questions
             ]
     

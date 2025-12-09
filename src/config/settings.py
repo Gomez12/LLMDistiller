@@ -1,5 +1,6 @@
 """Configuration management for LLM Distiller."""
 
+import json
 import os
 from typing import Dict, Optional
 
@@ -123,8 +124,15 @@ class Settings(BaseModel):
     @classmethod
     def load(cls, config_path: Optional[str] = None) -> "Settings":
         """Load settings from file with environment overrides."""
-        # For now, return default settings
-        # In a full implementation, this would load from config file
+        if config_path and os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    config_data = json.load(f)
+                return cls(**config_data)
+            except Exception as e:
+                print(f"Warning: Failed to load config from {config_path}: {e}")
+                print("Using default settings")
+        
         return cls()
 
     def get_provider_config(self, provider_name: str) -> Optional[ProviderConfig]:
