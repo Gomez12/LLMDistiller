@@ -338,7 +338,7 @@ jobs:
                     --output-file=licenses.json
         
         pip-licenses --from=mixed \
-                    --format=table \
+                    --format=markdown \
                     --output-file=licenses.txt
 
     - name: Check for problematic licenses
