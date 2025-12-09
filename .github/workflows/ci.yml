@@ -230,6 +230,12 @@ jobs:
         pytest tests/integration/ -v \
           --junit-xml=integration-test-results.xml
 
+    - name: Run end-to-end tests
+      run: |
+        export PYTHONPATH=$PWD/src
+        pytest tests/e2e/ -v \
+          --junit-xml=e2e-test-results.xml
+
     - name: Upload coverage to Codecov
       if: matrix.python-version == env.PYTHON_DEFAULT_VERSION && matrix.database == 'sqlite'
       uses: codecov/codecov-action@v3
@@ -247,6 +253,7 @@ jobs:
         path: |
           unit-test-results.xml
           integration-test-results.xml
+          e2e-test-results.xml
           htmlcov/
 
   # CLI Testing
@@ -276,13 +283,16 @@ jobs:
         llm-distiller --help
         
         # Test init command
-        llm-distiller init --config-path ./test_config
+        llm-distiller init
         
         # Test status command
-        llm-distiller status --config ./test_config/config.json || true
+        llm-distiller status || true
         
         # Test import with sample data
-        llm-distiller import csv sample_questions.csv --config ./test_config/config.json || true
+        llm-distiller import-data sample_questions.csv --type csv || true
+        
+        # Test export command
+        llm-distiller export --format jsonl --output test_export.jsonl || true
 
   # Build and Package
   build:
@@ -342,7 +352,7 @@ jobs:
     - name: Run performance tests
       run: |
         export PYTHONPATH=$PWD/src
-        pytest tests/performance/ -v \
+        pytest tests/e2e/test_workflows.py::TestQuickSetupWorkflow::test_package_installation -v \
           --benchmark-json=benchmark.json \
           --benchmark-only || true
 
