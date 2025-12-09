@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
         cache: 'pip'
@@ -250,7 +250,7 @@ jobs:
         " >> $GITHUB_STEP_SUMMARY
 
     - name: Upload quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-reports
         path: |
@@ -268,10 +268,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
 
@@ -415,7 +415,7 @@ jobs:
         " >> $GITHUB_STEP_SUMMARY
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-quality-reports
         path: |
@@ -432,10 +432,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
         cache: 'pip'
@@ -546,7 +546,7 @@ jobs:
         " >> $GITHUB_STEP_SUMMARY
 
     - name: Upload test quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-quality-reports
         path: |
@@ -562,7 +562,7 @@ jobs:
     if: always()
     steps:
     - name: Download all reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: ./reports
 
@@ -732,7 +732,7 @@ jobs:
         "
 
     - name: Upload dashboard artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-dashboard
         path: |
