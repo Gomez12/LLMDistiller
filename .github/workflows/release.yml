@@ -201,8 +201,8 @@ jobs:
         }
         EOF
         
-        llm-distiller init --config-path test_config
-        llm-distiller status --config test_config/config.json
+        llm-distiller --config test_config/config.json init
+        llm-distiller --config test_config/config.json status
 
   # Create GitHub Release
   github-release:

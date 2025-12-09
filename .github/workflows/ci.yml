@@ -194,7 +194,7 @@ jobs:
     - name: Initialize database
       run: |
         export PYTHONPATH=$PWD/src
-        python -m src.main init --config config/test_config.json
+        llm-distiller --config config/test_config.json init
 
     - name: Run unit tests
       run: |
