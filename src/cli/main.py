@@ -37,21 +37,20 @@ def init(ctx):
     click.echo("Database initialized successfully!")
 
 
-@cli.command()
-@click.argument("file_path", type=click.Path(exists=True))
-@click.option(
-    "--type", "-t", type=click.Choice(["csv"]), default="csv", help="File type"
-)
-@click.pass_context
-def import_data(ctx, file_path: str, type: str):
-    """Import data from a file."""
-    db_manager = ctx.obj["db_manager"]
+@cli.group(name="import")
+def import_cmd():
+    """Import data from various sources."""
+    pass
 
-    if type == "csv":
-        importer = CSVImporter(db_manager)
-    else:
-        click.echo(f"Unsupported file type: {type}")
-        return
+
+@import_cmd.command()
+@click.argument("file_path", type=click.Path(exists=True))
+@click.option("--default-correct", help="Default correct answer for missing values")
+@click.pass_context
+def csv(ctx, file_path: str, default_correct: Optional[str]):
+    """Import data from a CSV file."""
+    db_manager = ctx.obj["db_manager"]
+    importer = CSVImporter(db_manager)
 
     click.echo(f"Importing data from {file_path}...")
 
