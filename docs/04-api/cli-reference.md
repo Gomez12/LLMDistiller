@@ -397,32 +397,20 @@ llm-distiller export [OPTIONS]
 ```bash
 --format TEXT         Output format (jsonl/csv/json) (default: jsonl)
 --output PATH         Output bestand (default: stdout)
---correct-only        Exporteer alleen correcte antwoorden
 --validated-only      Exporteer alleen gevalideerde antwoorden
---provider TEXT       Filter op provider
 --category TEXT       Filter op categorie
---question-ids TEXT   Comma-separated lijst van vraag IDs
---include-reasoning   Voeg reasoning toe aan export
---include-metadata    Voeg metadata toe
---split-ratio FLOAT   Train/validation split ratio (default: 0.8)
 ```
 
 #### Voorbeelden
 ```bash
-# Exporteer alle correcte antwoorden als JSONL
-llm-distiller export --correct-only --output dataset.jsonl
+# Exporteer alle gevalideerde antwoorden als JSONL
+llm-distiller export --validated-only --output dataset.jsonl
 
 # Exporteer per categorie
 llm-distiller export --category math --format csv --output math_dataset.csv
 
-# Exporteer met train/validation split
-llm-distiller export --correct-only --split-ratio 0.8 --output train.jsonl
-
-# Exporteer met reasoning en metadata
-llm-distiller export --include-reasoning --include-metadata --output full_dataset.jsonl
-
-# Exporteer specifieke vragen
-llm-distiller export --question-ids 1,2,3,4,5 --output subset.jsonl
+# Exporteer alle data
+llm-distiller export --output all_data.jsonl
 ```
 
 ### Export Invalid Responses

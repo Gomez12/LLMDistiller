@@ -2,9 +2,9 @@ git pull
 uv pip install -r requirements.txt
 uv pip uninstall llm-distiller
 uv pip install -e .
-rm dataset.jsonl
+rm -f dataset.jsonl
 llm-distiller init
-llm-distiller import csv questions.csv --default-correct null
+llm-distiller import csv questions.csv
 llm-distiller process --limit 2
-llm-distiller export --correct-only --output dataset.jsonl
+llm-distiller export --validated-only --output dataset.jsonl
 
