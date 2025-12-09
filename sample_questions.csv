@@ -1,0 +1,4 @@
+json_id,category,question,answer_schema
+1,math,"What is 2+2?","{""type"": ""object"", ""properties"": {""answer"": {""type"": ""number""}}, ""required"": [""answer""]}"
+2,science,"What is the chemical formula for water?","{""type"": ""object"", ""properties"": {""formula"": {""type"": ""string""}}, ""required"": [""formula""]}"
+3,history,"Who was the first president of the United States?","{""type"": ""object"", ""properties"": {""name"": {""type"": ""string""}, ""year"": {""type"": ""number""}}, ""required"": [""name""]}"
