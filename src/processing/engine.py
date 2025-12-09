@@ -180,9 +180,9 @@ class ProcessingEngine:
         
         try:
             # Wait for all tasks to be processed with timeout
-            timeout = 30  # 30 seconds timeout
+            timeout = 900  # 15 minutes timeout (900 seconds)
             start_time = asyncio.get_event_loop().time()
-            logger.debug(f"[DEBUG] Processing with {timeout}s timeout, started at {start_time}")
+            logger.debug(f"[DEBUG] Processing with {timeout}s timeout (15 minutes), started at {start_time}")
             
             while not await self.queue.is_empty():
                 await asyncio.sleep(0.1)
