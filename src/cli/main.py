@@ -114,6 +114,7 @@ def export(ctx, format: str, output: Optional[str], validated_only: bool):
 
     exporter = DatasetExporter(db_manager)
 
+    count = 0
     try:
         if format == "jsonl":
             count = exporter.export_jsonl(output, validated_only)
@@ -154,5 +155,10 @@ def status(ctx):
             click.echo(f"Validation Rate: {validation_rate:.1f}%")
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the CLI."""
     cli()
+
+
+if __name__ == "__main__":
+    main()
