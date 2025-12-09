@@ -450,8 +450,15 @@ jobs:
       run: |
         export PYTHONPATH=$PWD/src
         
-        # Run tests with coverage
-        pytest tests/ --cov=src --cov-report=json --cov-report=term-missing || true
+        # Check if tests directory exists and has test files
+        if [ ! -d "tests" ] || [ -z "$(ls -A tests/ 2>/dev/null)" ]; then
+          echo "No tests found, creating empty coverage report"
+          echo '{"version": "4.5.4", "coverage": {"": {"lines": {"percent": 0}}}}' > coverage.json
+          echo "Test Coverage: 0% (no tests found)" > test_coverage.txt
+        else
+          # Run tests with coverage
+          pytest tests/ --cov=src --cov-report=json --cov-report=term-missing || true
+        fi
         
         # Generate test report
         python -c "
