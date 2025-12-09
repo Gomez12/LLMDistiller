@@ -466,15 +466,25 @@ jobs:
   container-security:
     name: Container Security Scanning
     runs-on: ubuntu-latest
-    if: hashFiles('Dockerfile*') != ''
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
-
+    
+    - name: Check for Dockerfile
+      id: check-dockerfile
+      run: |
+        if [ -f "Dockerfile" ] || ls Dockerfile* 1> /dev/null 2>&1; then
+          echo "dockerfile_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "dockerfile_exists=false" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Set up Docker Buildx
+      if: steps.check-dockerfile.outputs.dockerfile_exists == 'true'
       uses: docker/setup-buildx-action@v5
 
     - name: Build Docker image
+      if: steps.check-dockerfile.outputs.dockerfile_exists == 'true'
       uses: docker/build-push-action@v6
       with:
         context: .
@@ -485,6 +495,7 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Run Trivy container scan
+      if: steps.check-dockerfile.outputs.dockerfile_exists == 'true'
       run: |
         # Install Trivy
         sudo apt-get update
@@ -499,6 +510,7 @@ jobs:
         trivy image --format table --output trivy-container.txt llm-distiller:security-scan || true
 
     - name: Generate container security report
+      if: steps.check-dockerfile.outputs.dockerfile_exists == 'true'
       run: |
         python -c "
         import json
@@ -582,6 +594,7 @@ jobs:
         " >> $GITHUB_STEP_SUMMARY
 
     - name: Upload container security artifacts
+      if: steps.check-dockerfile.outputs.dockerfile_exists == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: container-security-reports
