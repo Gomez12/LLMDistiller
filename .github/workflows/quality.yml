@@ -1,0 +1,740 @@
+name: Code Quality Dashboard
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly on Sundays at 4 AM UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+env:
+  PYTHON_DEFAULT_VERSION: "3.11"
+
+jobs:
+  # Code Quality Analysis
+  quality-analysis:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install radon>=6.0.0 \
+                    xenon>=0.9.0 \
+                    vulture>=2.7 \
+                    pydocstyle>=6.3.0 \
+                    bandit>=1.7.0 \
+                    safety>=2.3.0 \
+                    complexity>=0.1
+
+    - name: Run code complexity analysis
+      run: |
+        # Cyclomatic complexity
+        radon cc src/ --json --output-file=radon_cc.json
+        radon cc src/ --min B
+        
+        # Maintainability index
+        radon mi src/ --json --output-file=radon_mi.json
+        radon mi src/ --min B
+        
+        # Raw metrics
+        radon raw src/ --json --output-file=radon_raw.json
+
+    - name: Run xenon complexity monitoring
+      run: |
+        xenon --max-absolute A --max-modules A --max-average A src/ || true
+
+    - name: Find dead code
+      run: |
+        vulture src/ --min-confidence 80 --output-file=vulture_report.txt || true
+
+    - name: Run docstring analysis
+      run: |
+        pydocstyle src/ --json --output-file=pydocstyle_report.json || true
+        pydocstyle src/ || true
+
+    - name: Generate quality metrics
+      run: |
+        python -c "
+        import json
+        import os
+        from pathlib import Path
+        from datetime import datetime
+        
+        print('## Code Quality Dashboard')
+        print('')
+        print(f'**Analysis Date:** {datetime.now().isoformat()}')
+        print(f'**Branch:** {os.environ.get(\"GITHUB_REF_NAME\", \"unknown\")}')
+        print(f'**Commit:** {os.environ.get(\"GITHUB_SHA\", \"unknown\")[:8]}')
+        print('')
+        
+        # Parse radon reports
+        try:
+            with open('radon_cc.json', 'r') as f:
+                cc_data = json.load(f)
+            
+            with open('radon_mi.json', 'r') as f:
+                mi_data = json.load(f)
+            
+            with open('radon_raw.json', 'r') as f:
+                raw_data = json.load(f)
+        except FileNotFoundError as e:
+            print(f'⚠️ Could not load radon reports: {e}')
+            cc_data = {}
+            mi_data = {}
+            raw_data = {}
+        
+        # Calculate metrics
+        total_functions = 0
+        total_classes = 0
+        total_complexity = 0
+        high_complexity_functions = []
+        
+        for module_name, module_data in cc_data.items():
+            for item in module_data:
+                if item['type'] == 'function':
+                    total_functions += 1
+                    total_complexity += item['complexity']
+                    if item['complexity'] > 10:
+                        high_complexity_functions.append({
+                            'module': module_name,
+                            'name': item['name'],
+                            'complexity': item['complexity']
+                        })
+                elif item['type'] == 'class':
+                    total_classes += 1
+        
+        avg_complexity = total_complexity / total_functions if total_functions > 0 else 0
+        
+        # Maintainability index
+        mi_scores = []
+        for module_name, module_data in mi_data.items():
+            mi_scores.append(module_data.get('mi', 0))
+        
+        avg_mi = sum(mi_scores) / len(mi_scores) if mi_scores else 0
+        
+        # Raw metrics
+        loc = 0
+        comments = 0
+        multi = 0
+        blank = 0
+        
+        for module_name, module_data in raw_data.items():
+            loc += module_data.get('loc', 0)
+            comments += module_data.get('comments', 0)
+            multi += module_data.get('multi', 0)
+            blank += module_data.get('blank', 0)
+        
+        # Display results
+        print('### 📊 Code Metrics')
+        print('')
+        print('| Metric | Value |')
+        print('|--------|-------|')
+        print(f'| Lines of Code | {loc:,} |')
+        print(f'| Comment Lines | {comments:,} |')
+        print(f'| Blank Lines | {blank:,} |')
+        print(f'| Functions | {total_functions:,} |')
+        print(f'| Classes | {total_classes:,} |')
+        print(f'| Average Complexity | {avg_complexity:.2f} |')
+        print(f'| Average Maintainability | {avg_mi:.2f} |')
+        print(f'| Comment Ratio | {(comments/loc*100):.1f}% |')
+        
+        print('')
+        print('### 🎯 Quality Scores')
+        print('')
+        
+        # Complexity score
+        complexity_score = max(0, 100 - (avg_complexity - 1) * 10)
+        complexity_score = min(100, complexity_score)
+        complexity_emoji = '🟢' if complexity_score >= 80 else '🟡' if complexity_score >= 60 else '🔴'
+        print(f'{complexity_emoji} **Complexity Score:** {complexity_score:.0f}/100')
+        
+        # Maintainability score
+        mi_score = avg_mi
+        mi_emoji = '🟢' if mi_score >= 80 else '🟡' if mi_score >= 60 else '🔴'
+        print(f'{mi_emoji} **Maintainability Score:** {mi_score:.0f}/100')
+        
+        # Documentation score
+        doc_ratio = comments / loc if loc > 0 else 0
+        doc_score = min(100, doc_ratio * 200)  # 20% comments = 100 score
+        doc_emoji = '🟢' if doc_score >= 80 else '🟡' if doc_score >= 60 else '🔴'
+        print(f'{doc_emoji} **Documentation Score:** {doc_score:.0f}/100')
+        
+        # Overall score
+        overall_score = (complexity_score + mi_score + doc_score) / 3
+        overall_emoji = '🟢' if overall_score >= 80 else '🟡' if overall_score >= 60 else '🔴'
+        print(f'{overall_emoji} **Overall Quality Score:** {overall_score:.0f}/100')
+        
+        print('')
+        
+        # High complexity functions
+        if high_complexity_functions:
+            print('### ⚠️ High Complexity Functions')
+            print('')
+            print('| Function | Module | Complexity |')
+            print('|----------|---------|------------|')
+            
+            for func in sorted(high_complexity_functions, key=lambda x: x['complexity'], reverse=True)[:10]:
+                module = func['module'].replace('src/', '')
+                name = func['name']
+                complexity = func['complexity']
+                print(f'| `{name}` | `{module}` | {complexity} |')
+        
+        # Dead code
+        if os.path.exists('vulture_report.txt'):
+            with open('vulture_report.txt', 'r') as f:
+                dead_code = f.read().strip()
+            
+            if dead_code:
+                print('')
+                print('### 🦅 Dead Code Detection')
+                print('')
+                print('```')
+                print(dead_code[:500] + ('...' if len(dead_code) > 500 else ''))
+                print('```')
+        
+        # Recommendations
+        print('')
+        print('### 💡 Recommendations')
+        print('')
+        
+        if avg_complexity > 5:
+            print('- Consider refactoring functions with high complexity')
+            print('- Break down large functions into smaller, focused ones')
+        
+        if avg_mi < 70:
+            print('- Improve code maintainability')
+            print('- Add more documentation and comments')
+        
+        if doc_ratio < 0.1:
+            print('- Increase code documentation')
+            print('- Add docstrings to functions and classes')
+        
+        if high_complexity_functions:
+            print(f'- Refactor {len(high_complexity_functions)} high-complexity functions')
+        
+        if not high_complexity_functions and avg_complexity <= 5 and avg_mi >= 70:
+            print('- 🎉 Excellent code quality! Keep up the good work!')
+        
+        # Save metrics for other jobs
+        metrics = {
+            'complexity_score': complexity_score,
+            'maintainability_score': mi_score,
+            'documentation_score': doc_score,
+            'overall_score': overall_score,
+            'total_functions': total_functions,
+            'total_classes': total_classes,
+            'avg_complexity': avg_complexity,
+            'lines_of_code': loc,
+            'comment_ratio': doc_ratio
+        }
+        
+        with open('quality_metrics.json', 'w') as f:
+            json.dump(metrics, f, indent=2)
+        " >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-reports
+        path: |
+          radon_cc.json
+          radon_mi.json
+          radon_raw.json
+          vulture_report.txt
+          pydocstyle_report.json
+          quality_metrics.json
+        retention-days: 30
+
+  # Security Quality Analysis
+  security-quality:
+    name: Security Quality Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit>=1.7.0 \
+                    safety>=2.3.0 \
+                    semgrep>=1.0.0
+
+    - name: Run Bandit security analysis
+      run: |
+        bandit -r src/ -f json -o bandit_report.json || true
+        bandit -r src/ -f txt -o bandit_report.txt || true
+
+    - name: Run Semgrep security analysis
+      run: |
+        semgrep --config=auto --json --output=semgrep_report.json src/ || true
+        semgrep --config=auto --text --output=semgrep_report.txt src/ || true
+
+    - name: Generate security quality report
+      run: |
+        python -c "
+        import json
+        import os
+        from datetime import datetime
+        
+        print('## Security Quality Analysis')
+        print('')
+        print(f'**Analysis Date:** {datetime.now().isoformat()}')
+        print('')
+        
+        # Parse Bandit report
+        bandit_issues = 0
+        high_severity = 0
+        medium_severity = 0
+        low_severity = 0
+        
+        try:
+            with open('bandit_report.json', 'r') as f:
+                bandit_data = json.load(f)
+            
+            bandit_issues = len(bandit_data.get('results', []))
+            
+            for result in bandit_data.get('results', []):
+                severity = result.get('issue_severity', 'UNKNOWN')
+                if severity == 'HIGH':
+                    high_severity += 1
+                elif severity == 'MEDIUM':
+                    medium_severity += 1
+                elif severity == 'LOW':
+                    low_severity += 1
+                    
+        except FileNotFoundError:
+            print('⚠️ Bandit report not found')
+        
+        # Parse Semgrep report
+        semgrep_issues = 0
+        try:
+            with open('semgrep_report.json', 'r') as f:
+                semgrep_data = json.load(f)
+            
+            semgrep_issues = len(semgrep_data.get('results', []))
+            
+        except FileNotFoundError:
+            print('⚠️ Semgrep report not found')
+        
+        # Calculate security score
+        total_issues = bandit_issues + semgrep_issues
+        security_score = max(0, 100 - (high_severity * 20) - (medium_severity * 10) - (low_severity * 5))
+        security_score = max(0, security_score - (semgrep_issues * 2))
+        
+        # Display results
+        print('### 🔒 Security Metrics')
+        print('')
+        print('| Metric | Value |')
+        print('|--------|-------|')
+        print(f'| Bandit Issues | {bandit_issues} |')
+        print(f'| High Severity | {high_severity} |')
+        print(f'| Medium Severity | {medium_severity} |')
+        print(f'| Low Severity | {low_severity} |')
+        print(f'| Semgrep Issues | {semgrep_issues} |')
+        print(f'| Total Security Issues | {total_issues} |')
+        
+        print('')
+        print('### 🛡️ Security Score')
+        print('')
+        
+        security_emoji = '🟢' if security_score >= 90 else '🟡' if security_score >= 70 else '🔴'
+        print(f'{security_emoji} **Security Score:** {security_score:.0f}/100')
+        
+        print('')
+        print('### 📋 Security Issues Summary')
+        print('')
+        
+        if high_severity > 0:
+            print(f'⚠️ **{high_severity} high severity issues** - Immediate attention required')
+        if medium_severity > 0:
+            print(f'⚠️ **{medium_severity} medium severity issues** - Should be addressed soon')
+        if low_severity > 0:
+            print(f'ℹ️ **{low_severity} low severity issues** - Can be addressed in future')
+        if semgrep_issues > 0:
+            print(f'ℹ️ **{semgrep_issues} additional issues** found by Semgrep')
+        
+        if total_issues == 0:
+            print('🎉 **No security issues found!**')
+        
+        print('')
+        print('### 🔧 Security Recommendations')
+        print('')
+        
+        if high_severity > 0:
+            print('- Address high severity security issues immediately')
+            print('- Review input validation and authentication')
+        
+        if medium_severity > 0:
+            print('- Plan to fix medium severity issues')
+            print('- Improve error handling and logging')
+        
+        if low_severity > 0:
+            print('- Consider fixing low severity issues in next release')
+            print('- Review code quality and best practices')
+        
+        if total_issues == 0:
+            print('- Maintain secure coding practices')
+            print('- Continue regular security scanning')
+        
+        # Save security metrics
+        security_metrics = {
+            'security_score': security_score,
+            'bandit_issues': bandit_issues,
+            'high_severity': high_severity,
+            'medium_severity': medium_severity,
+            'low_severity': low_severity,
+            'semgrep_issues': semgrep_issues,
+            'total_issues': total_issues
+        }
+        
+        with open('security_metrics.json', 'w') as f:
+            json.dump(security_metrics, f, indent=2)
+        " >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-quality-reports
+        path: |
+          bandit_report.json
+          bandit_report.txt
+          semgrep_report.json
+          semgrep_report.txt
+          security_metrics.json
+        retention-days: 30
+
+  # Test Quality Analysis
+  test-quality:
+    name: Test Quality Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Analyze test coverage
+      run: |
+        export PYTHONPATH=$PWD/src
+        
+        # Run tests with coverage
+        pytest tests/ --cov=src --cov-report=json --cov-report=term-missing || true
+        
+        # Generate test report
+        python -c "
+        import json
+        import os
+        from pathlib import Path
+        
+        try:
+            with open('coverage.json', 'r') as f:
+                coverage_data = json.load(f)
+        except FileNotFoundError:
+            print('Coverage report not found')
+            exit(1)
+        
+        totals = coverage_data.get('totals', {})
+        line_coverage = totals.get('percent_covered', 0)
+        branch_coverage = totals.get('percent_covered_display', 0)
+        
+        # Count test files
+        test_files = list(Path('tests').rglob('test_*.py')) if Path('tests').exists() else []
+        test_count = len(test_files)
+        
+        # Count source files
+        src_files = list(Path('src').rglob('*.py')) if Path('src').exists() else []
+        src_count = len(src_files)
+        
+        print('## Test Quality Analysis')
+        print('')
+        print('### 🧪 Test Metrics')
+        print('')
+        print('| Metric | Value |')
+        print('|--------|-------|')
+        print(f'| Test Files | {test_count} |')
+        print(f'| Source Files | {src_count} |')
+        print(f'| Test-to-Source Ratio | {(test_count/src_count if src_count > 0 else 0):.2f} |')
+        print(f'| Line Coverage | {line_coverage:.1f}% |')
+        print(f'| Branch Coverage | {branch_coverage:.1f}% |')
+        
+        print('')
+        print('### 📊 Test Quality Score')
+        print('')
+        
+        # Calculate test quality score
+        coverage_score = line_coverage
+        test_ratio_score = min(100, (test_count / src_count * 100) if src_count > 0 else 0)
+        test_quality_score = (coverage_score + test_ratio_score) / 2
+        
+        quality_emoji = '🟢' if test_quality_score >= 80 else '🟡' if test_quality_score >= 60 else '🔴'
+        print(f'{quality_emoji} **Test Quality Score:** {test_quality_score:.0f}/100')
+        
+        print('')
+        print('### 📈 Coverage Analysis')
+        print('')
+        
+        if line_coverage >= 90:
+            print('🎉 **Excellent coverage!** Your code is well tested.')
+        elif line_coverage >= 80:
+            print('👍 **Good coverage!** Consider adding more tests for edge cases.')
+        elif line_coverage >= 70:
+            print('⚠️ **Moderate coverage.** You should add more tests.')
+        else:
+            print('❌ **Low coverage.** Significant testing needed.')
+        
+        print('')
+        print('### 💡 Test Recommendations')
+        print('')
+        
+        if line_coverage < 80:
+            print('- Increase test coverage to at least 80%')
+            print('- Focus on uncovered critical paths')
+        
+        if test_ratio_score < 50:
+            print('- Add more test files')
+            print('- Consider test-driven development for new features')
+        
+        if line_coverage >= 80 and test_ratio_score >= 50:
+            print('- Maintain current test quality')
+            print('- Consider adding integration tests')
+        
+        # Save test metrics
+        test_metrics = {
+            'test_quality_score': test_quality_score,
+            'line_coverage': line_coverage,
+            'branch_coverage': branch_coverage,
+            'test_files': test_count,
+            'source_files': src_count,
+            'test_ratio': test_count / src_count if src_count > 0 else 0
+        }
+        
+        with open('test_metrics.json', 'w') as f:
+            json.dump(test_metrics, f, indent=2)
+        " >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload test quality reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-quality-reports
+        path: |
+          coverage.json
+          test_metrics.json
+        retention-days: 30
+
+  # Quality Dashboard
+  dashboard:
+    name: Quality Dashboard
+    runs-on: ubuntu-latest
+    needs: [quality-analysis, security-quality, test-quality]
+    if: always()
+    steps:
+    - name: Download all reports
+      uses: actions/download-artifact@v3
+      with:
+        path: ./reports
+
+    - name: Generate comprehensive dashboard
+      run: |
+        python -c "
+        import json
+        import os
+        from datetime import datetime
+        
+        print('# 🏆 Code Quality Dashboard')
+        print('')
+        print(f'**Generated:** {datetime.now().isoformat()}')
+        print(f'**Repository:** {os.environ.get(\"GITHUB_REPOSITORY\", \"unknown\")}')
+        print(f'**Branch:** {os.environ.get(\"GITHUB_REF_NAME\", \"unknown\")}')
+        print('')
+        
+        # Load all metrics
+        quality_metrics = {}
+        security_metrics = {}
+        test_metrics = {}
+        
+        try:
+            with open('reports/quality-reports/quality_metrics.json', 'r') as f:
+                quality_metrics = json.load(f)
+        except FileNotFoundError:
+            pass
+        
+        try:
+            with open('reports/security-quality-reports/security_metrics.json', 'r') as f:
+                security_metrics = json.load(f)
+        except FileNotFoundError:
+            pass
+        
+        try:
+            with open('reports/test-quality-reports/test_metrics.json', 'r') as f:
+                test_metrics = json.load(f)
+        except FileNotFoundError:
+            pass
+        
+        # Overall scores
+        overall_quality = quality_metrics.get('overall_score', 0)
+        security_score = security_metrics.get('security_score', 0)
+        test_quality = test_metrics.get('test_quality_score', 0)
+        
+        # Calculate overall project score
+        project_score = (overall_quality + security_score + test_quality) / 3
+        
+        print('## 📊 Overall Project Score')
+        print('')
+        
+        # Score visualization
+        def get_score_emoji(score):
+            if score >= 90: return '🟢'
+            elif score >= 70: return '🟡'
+            elif score >= 50: return '🟠'
+            else: return '🔴'
+        
+        def get_score_bar(score):
+            filled = int(score / 10)
+            empty = 10 - filled
+            return '█' * filled + '░' * empty
+        
+        print(f'### {get_score_emoji(project_score)} Project Health: {project_score:.0f}/100')
+        print(f'{get_score_bar(project_score)} {project_score:.0f}%')
+        print('')
+        
+        print('| Category | Score | Status |')
+        print('|----------|-------|--------|')
+        print(f'| Code Quality | {overall_quality:.0f}/100 | {get_score_emoji(overall_quality)} |')
+        print(f'| Security | {security_score:.0f}/100 | {get_score_emoji(security_score)} |')
+        print(f'| Test Quality | {test_quality:.0f}/100 | {get_score_emoji(test_quality)} |')
+        print('')
+        
+        # Detailed breakdown
+        print('## 📈 Detailed Metrics')
+        print('')
+        
+        print('### 🏗️ Code Quality')
+        print('')
+        if quality_metrics:
+            print(f'- **Lines of Code:** {quality_metrics.get(\"lines_of_code\", 0):,}')
+            print(f'- **Functions:** {quality_metrics.get(\"total_functions\", 0):,}')
+            print(f'- **Classes:** {quality_metrics.get(\"total_classes\", 0):,}')
+            print(f'- **Average Complexity:** {quality_metrics.get(\"avg_complexity\", 0):.2f}')
+            print(f'- **Comment Ratio:** {quality_metrics.get(\"comment_ratio\", 0)*100:.1f}%')
+        else:
+            print('No code quality metrics available')
+        
+        print('')
+        print('### 🔒 Security')
+        print('')
+        if security_metrics:
+            print(f'- **Security Issues:** {security_metrics.get(\"total_issues\", 0)}')
+            print(f'- **High Severity:** {security_metrics.get(\"high_severity\", 0)}')
+            print(f'- **Medium Severity:** {security_metrics.get(\"medium_severity\", 0)}')
+            print(f'- **Low Severity:** {security_metrics.get(\"low_severity\", 0)}')
+        else:
+            print('No security metrics available')
+        
+        print('')
+        print('### 🧪 Test Quality')
+        print('')
+        if test_metrics:
+            print(f'- **Line Coverage:** {test_metrics.get(\"line_coverage\", 0):.1f}%')
+            print(f'- **Branch Coverage:** {test_metrics.get(\"branch_coverage\", 0):.1f}%')
+            print(f'- **Test Files:** {test_metrics.get(\"test_files\", 0)}')
+            print(f'- **Source Files:** {test_metrics.get(\"source_files\", 0)}')
+        else:
+            print('No test quality metrics available')
+        
+        print('')
+        
+        # Recommendations
+        print('## 🎯 Priority Actions')
+        print('')
+        
+        recommendations = []
+        
+        if overall_quality < 70:
+            recommendations.append('🔧 Improve code quality by refactoring complex functions')
+        
+        if security_score < 80:
+            recommendations.append('🔒 Address security vulnerabilities, especially high-severity issues')
+        
+        if test_quality < 80:
+            recommendations.append('🧪 Increase test coverage and add more comprehensive tests')
+        
+        if project_score >= 90:
+            recommendations.append('🎉 Excellent work! Maintain current quality standards')
+        
+        if recommendations:
+            for i, rec in enumerate(recommendations, 1):
+                print(f'{i}. {rec}')
+        else:
+            print('✅ All quality metrics look good!')
+        
+        print('')
+        print('---')
+        print('*This dashboard is automatically generated by the Code Quality Dashboard workflow.*')
+        " >> $GITHUB_STEP_SUMMARY
+
+    - name: Create quality badge data
+      run: |
+        python -c "
+        import json
+        
+        try:
+            with open('reports/quality-reports/quality_metrics.json', 'r') as f:
+                quality_metrics = json.load(f)
+            
+            overall_score = quality_metrics.get('overall_score', 0)
+            
+            # Create badge data
+            badge_data = {
+                'schemaVersion': 1,
+                'label': 'Code Quality',
+                'message': f'{overall_score:.0f}/100',
+                'color': 'brightgreen' if overall_score >= 90 else 'yellow' if overall_score >= 70 else 'red'
+            }
+            
+            with open('quality-badge.json', 'w') as f:
+                json.dump(badge_data, f)
+                
+        except Exception as e:
+            print(f'Could not create badge: {e}')
+        "
+
+    - name: Upload dashboard artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-dashboard
+        path: |
+          quality-badge.json
+        retention-days: 90

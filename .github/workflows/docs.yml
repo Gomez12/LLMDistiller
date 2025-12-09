@@ -1,0 +1,504 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  PYTHON_DEFAULT_VERSION: "3.11"
+
+jobs:
+  # Build documentation
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+        # Install documentation dependencies
+        pip install mkdocs>=1.5.0 \
+                    mkdocs-material>=9.0.0 \
+                    mkdocstrings>=0.22.0 \
+                    mkdocs-mermaid2-plugin>=1.0.0 \
+                    mkdocs-glightbox>=0.3.0 \
+                    mkdocs-minify-plugin>=0.7.0
+
+    - name: Install project for API docs
+      run: |
+        pip install -e .
+
+    - name: Configure Git user
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Create mkdocs.yml if not exists
+      run: |
+        if [[ ! -f "mkdocs.yml" ]]; then
+          cat > mkdocs.yml << 'EOF'
+        site_name: LLM Distiller
+        site_description: A Distiller for smaller specialized models
+        site_author: LLM Distiller Team
+        site_url: https://llm-distiller.github.io
+        
+        repo_name: llm-distiller/LLMDistiller
+        repo_url: https://github.com/llm-distiller/LLMDistiller
+        
+        copyright: Copyright &copy; 2024 LLM Distiller Team
+        
+        theme:
+          name: material
+          language: en
+          palette:
+            - scheme: default
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-7
+                name: Switch to dark mode
+            - scheme: slate
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-4
+                name: Switch to light mode
+          features:
+            - navigation.instant
+            - navigation.tracking
+            - navigation.tabs
+            - navigation.tabs.sticky
+            - navigation.sections
+            - navigation.expand
+            - navigation.indexes
+            - navigation.top
+            - search.highlight
+            - search.share
+            - header.autohide
+            - content.code.annotate
+            - content.code.copy
+            - content.tabs.link
+        
+        plugins:
+          - search:
+              separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+          - minify:
+              minify_html: true
+          - glightbox
+          - mermaid2
+          - mkdocstrings:
+              handlers:
+                python:
+                  paths: [src]
+                  options:
+                    show_source: true
+                    show_root_heading: true
+                    show_root_members_full_path: false
+                    merge_init_into_class: true
+        
+        markdown_extensions:
+          - abbr
+          - admonition
+          - attr_list
+          - def_list
+          - footnotes
+          - meta
+          - md_in_html
+          - toc:
+              permalink: true
+              title: Contents
+          - tables
+          - pymdownx.arithmatex:
+              generic: true
+          - pymdownx.betterem:
+              smart_enable: all
+          - pymdownx.caret
+          - pymdownx.details
+          - pymdownx.emoji:
+              emoji_generator: !!python/name:material.extensions.emoji.to_svg
+              emoji_index: !!python/name:material.extensions.emoji.twemoji
+          - pymdownx.highlight:
+              anchor_linenums: true
+              line_spans: __span
+              pygments_lang_class: true
+          - pymdownx.inlinehilite
+          - pymdownx.keys
+          - pymdownx.magiclink:
+              repo_url_shorthand: true
+              user: llm-distiller
+              repo: LLMDistiller
+          - pymdownx.mark
+          - pymdownx.smartsymbols
+          - pymdownx.superfences:
+              custom_fences:
+                - name: mermaid
+                  class: mermaid
+                  format: !!python/name:pymdownx.superfences.fence_code_format
+          - pymdownx.tabbed:
+              alternate_style: true
+              combine_header_slug: true
+              slugify: !!python/object/apply:pymdownx.slugs.slugify
+                kwds:
+                  case: lower
+          - pymdownx.tasklist:
+              custom_checkbox: true
+          - pymdownx.tilde
+        
+        nav:
+          - Home: index.md
+          - Overview:
+              - Project Overview: 01-overview/project-overview.md
+              - Architecture: 01-overview/architecture.md
+              - Design Decisions: 01-overview/design-decisions.md
+          - Database:
+              - Schema: 02-database/schema.md
+              - Models: 02-database/models.md
+              - Migrations: 02-database/migrations.md
+          - Configuration:
+              - Reference: 03-configuration/config-reference.md
+              - Providers: 03-configuration/providers.md
+              - Examples: 03-configuration/examples/config-examples.md
+          - API:
+              - CLI Reference: 04-api/cli-reference.md
+              - Importers: 04-api/importers.md
+              - LLM Client: 04-api/llm-client.md
+              - Validation: 04-api/validation.md
+          - Implementation:
+              - Setup: 05-implementation/setup.md
+              - Testing: 05-implementation/testing.md
+              - Contributing: 05-implementation/contributing.md
+          - Examples:
+              - Quick Start: 06-examples/quick-start.md
+          - API Reference:
+              - src.cli: reference/cli.md
+              - src.database: reference/database.md
+              - src.llm: reference/llm.md
+              - src.importers: reference/importers.md
+              - src.validators: reference/validators.md
+              - src.exporters: reference/exporters.md
+              - src.config: reference/config.md
+              - src.utils: reference/utils.md
+        
+        extra:
+          analytics:
+            provider: google
+            property: !ENV GOOGLE_ANALYTICS_KEY
+          social:
+            - icon: fontawesome/brands/github
+              link: https://github.com/llm-distiller/LLMDistiller
+            - icon: fontawesome/brands/python
+              link: https://pypi.org/project/llm-distiller/
+          version:
+            provider: mike
+        EOF
+        fi
+
+    - name: Create docs index if not exists
+      run: |
+        if [[ ! -f "docs/index.md" ]]; then
+          mkdir -p docs
+          cat > docs/index.md << 'EOF'
+        # LLM Distiller
+        
+        Welcome to the LLM Distiller documentation!
+        
+        LLM Distiller is a powerful tool for creating high-quality datasets for fine-tuning language models. It provides a comprehensive pipeline for importing, processing, validating, and exporting training data.
+        
+        ## 🚀 Quick Start
+        
+        ```bash
+        # Install
+        pip install llm-distiller
+        
+        # Initialize
+        llm-distiller init
+        
+        # Import data
+        llm-distiller import csv questions.csv
+        
+        # Process with LLM
+        llm-distiller process --limit 100
+        
+        # Export dataset
+        llm-distiller export --correct-only --output dataset.jsonl
+        ```
+        
+        ## 📚 Documentation
+        
+        Use the navigation menu to explore the complete documentation:
+        
+        - **Overview**: Learn about the project architecture and design decisions
+        - **Database**: Understand the data models and schema
+        - **Configuration**: Set up providers and processing parameters
+        - **API**: Detailed CLI and programming interface reference
+        - **Implementation**: Development setup and contribution guidelines
+        - **Examples**: Practical examples and tutorials
+        
+        ## 🔗 Links
+        
+        - [GitHub Repository](https://github.com/llm-distiller/LLMDistiller)
+        - [PyPI Package](https://pypi.org/project/llm-distiller/)
+        - [Issue Tracker](https://github.com/llm-distiller/LLMDistiller/issues)
+        
+        ---
+        
+        *Last updated: {{ git_date }}
+        EOF
+        fi
+
+    - name: Build documentation
+      run: |
+        mkdocs build --strict --verbose
+
+    - name: Check for broken links
+      run: |
+        pip install lychee
+        lychee --verbose --no-progress site/index.html || true
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: docs-build
+        path: site/
+        retention-days: 1
+
+  # Deploy to GitHub Pages
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: docs-build
+        path: site/
+
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: site/
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+  # Deploy versioned documentation (for releases)
+  deploy-versioned:
+    name: Deploy Versioned Docs
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install mkdocs>=1.5.0 \
+                    mkdocs-material>=9.0.0 \
+                    mkdocstrings>=0.22.0 \
+                    mike>=2.0.0
+
+    - name: Install project for API docs
+      run: |
+        pip install -e .
+
+    - name: Configure Git user
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Deploy versioned documentation
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/}"
+        VERSION="${VERSION#v}"  # Remove 'v' prefix
+        
+        # Deploy to GitHub Pages with mike
+        mike deploy --push --update-aliases "$VERSION" latest
+        
+        # Set default version
+        mike set-default --push latest
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+  # Documentation Quality Checks
+  quality:
+    name: Documentation Quality
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: docs-build
+        path: site/
+
+    - name: Check documentation coverage
+      run: |
+        # Check if all modules are documented
+        find src/ -name "*.py" -type f | while read file; do
+          module=${file#src/}
+          module=${module%.py}
+          module=${module//\//.}
+          
+          if [[ ! -f "site/reference/$module.html" ]] && [[ ! -f "site/reference/$module/index.html" ]]; then
+            echo "⚠️ Module $module is not documented"
+          fi
+        done
+
+    - name: Check for broken internal links
+      run: |
+        pip install beautifulsoup4
+        python -c "
+        import os
+        from bs4 import BeautifulSoup
+        import re
+        
+        broken_links = []
+        base_path = 'site'
+        
+        for root, dirs, files in os.walk(base_path):
+            for file in files:
+                if file.endswith('.html'):
+                    file_path = os.path.join(root, file)
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    soup = BeautifulSoup(content, 'html.parser')
+                    for link in soup.find_all('a', href=True):
+                        href = link['href']
+                        if href.startswith('/') and not href.startswith('http'):
+                            # Internal link
+                            target_path = base_path + href.rstrip('/')
+                            if href.endswith('/'):
+                                target_path += 'index.html'
+                            elif not href.endswith('.html'):
+                                target_path += '.html'
+                            
+                            if not os.path.exists(target_path):
+                                broken_links.append(f'{file_path}: {href}')
+        
+        if broken_links:
+            print('❌ Broken internal links found:')
+            for link in broken_links[:10]:  # Show first 10
+                print(f'  {link}')
+            if len(broken_links) > 10:
+                print(f'  ... and {len(broken_links) - 10} more')
+            exit(1)
+        else:
+            print('✅ No broken internal links found')
+        "
+
+    - name: Generate documentation statistics
+      run: |
+        echo "## Documentation Statistics" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Count pages
+        page_count=$(find site -name "*.html" | wc -l)
+        echo "- 📄 Total pages: $page_count" >> $GITHUB_STEP_SUMMARY
+        
+        # Count images
+        image_count=$(find site -name "*.png" -o -name "*.jpg" -o -name "*.svg" | wc -l)
+        echo "- 🖼️ Images: $image_count" >> $GITHUB_STEP_SUMMARY
+        
+        # Check file sizes
+        total_size=$(du -sh site | cut -f1)
+        echo "- 📦 Total size: $total_size" >> $GITHUB_STEP_SUMMARY
+        
+        # Check for API documentation
+        api_pages=$(find site/reference -name "*.html" 2>/dev/null | wc -l)
+        echo "- 🔧 API reference pages: $api_pages" >> $GITHUB_STEP_SUMMARY
+
+  # Notify on documentation deployment
+  notify:
+    name: Notify Documentation Update
+    runs-on: ubuntu-latest
+    needs: [build, deploy, quality]
+    if: always() && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+    steps:
+    - name: Create summary
+      run: |
+        echo "## Documentation Update Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+          echo "✅ Documentation deployed successfully to GitHub Pages" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 Live at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.deploy.result }}" == "skipped" ]]; then
+          echo "ℹ️ Documentation build completed (not deployed - only on main branch)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Documentation deployment failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Status" >> $GITHUB_STEP_SUMMARY
+        echo "- Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Quality: ${{ needs.quality.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Deploy: ${{ needs.deploy.result }}" >> $GITHUB_STEP_SUMMARY
