@@ -127,8 +127,8 @@ class ThinkingExtractor:
                 # Remove reasoning tags from content
                 cleaned_content = re.sub(reasoning_pattern, '', content, flags=re.DOTALL | re.IGNORECASE).strip()
         
-        print("RAW CONTENT:", repr(content))
-        print("THINKING MATCH:", thinking_match.group(0) if thinking_match else None)
-        print("THINKING1 MATCH:", thinking_match.group(1) if thinking_match else None)
-        print("RETURNING:", repr(cleaned_content), repr(thinking))
+        ##print("RAW CONTENT:", repr(content))
+        ##print("THINKING MATCH:", thinking_match.group(0) if thinking_match else None)
+        ##print("THINKING1 MATCH:", thinking_match.group(1) if thinking_match else None)
+        ##print("RETURNING:", repr(cleaned_content), repr(thinking))
         return cleaned_content, thinking
