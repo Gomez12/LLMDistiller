@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from src.importers.csv_importer import CSVImporter
-from src.database.manager import DatabaseManager
+from llm_distiller.importers.csv_importer import CSVImporter
+from llm_distiller.database.manager import DatabaseManager
 
 
 class TestCSVImporter:

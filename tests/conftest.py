@@ -10,9 +10,9 @@ import pytest
 import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.config.settings import Settings, DatabaseConfig, ProviderConfig, RateLimitConfig, ProcessingConfig, LoggingConfig
-from src.database.base import Base
-from src.database.manager import DatabaseManager
+from llm_distiller.config.settings import Settings, DatabaseConfig, ProviderConfig, RateLimitConfig, ProcessingConfig, LoggingConfig
+from llm_distiller.database.base import Base
+from llm_distiller.database.manager import DatabaseManager
 
 
 @pytest.fixture(scope="session")

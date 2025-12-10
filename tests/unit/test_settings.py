@@ -4,7 +4,7 @@ import os
 import pytest
 from unittest.mock import patch
 
-from src.config.settings import (
+from llm_distiller.config.settings import (
     Settings, DatabaseConfig, ProviderConfig, RateLimitConfig,
     GenerationConfig, ProcessingConfig, LoggingConfig
 )
