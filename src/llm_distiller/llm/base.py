@@ -114,7 +114,7 @@ class ThinkingExtractor:
         thinking_match = re.search(thinking_pattern, content, re.DOTALL | re.IGNORECASE)
         
         if thinking_match:
-            thinking = thinking_match.group(0).strip()
+            thinking = thinking_match.group(1).strip()
             # Remove thinking tags from content
             cleaned_content = re.sub(thinking_pattern, '', content, flags=re.DOTALL | re.IGNORECASE).strip()
         else:
@@ -123,7 +123,7 @@ class ThinkingExtractor:
             reasoning_match = re.search(reasoning_pattern, content, re.DOTALL | re.IGNORECASE)
             
             if reasoning_match:
-                thinking = reasoning_match.group(0).strip()
+                thinking = reasoning_match.group(1).strip()
                 # Remove reasoning tags from content
                 cleaned_content = re.sub(reasoning_pattern, '', content, flags=re.DOTALL | re.IGNORECASE).strip()
         

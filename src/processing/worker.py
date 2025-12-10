@@ -69,6 +69,8 @@ class QuestionWorker:
                 result.response_text = cleaned_content
                 result.thinking = thinking
             
+            print("RAW RESULT:", repr(result))
+
             logger.info(f"Processing question {task.question_id} with provider: {result.provider_name}")
             logger.debug(f"[DEBUG] Provider response - Success: {result.success}, Model: {result.model_name}, Tokens: {result.tokens_used}")
             if result.thinking:
