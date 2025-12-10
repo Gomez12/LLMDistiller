@@ -1,0 +1,6 @@
+json_id,category,question,golden_answer,answer_schema
+1,math,"What is 2+2?","4","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"number\"}}}"
+2,science,"What is H2O?","Water","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+3,history,"Who was the first president of the United States?","George Washington","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+4,geography,"What is the capital of France?","Paris","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+5,literature,"Who wrote Romeo and Juliet?","William Shakespeare","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"

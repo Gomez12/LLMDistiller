@@ -110,7 +110,7 @@ class ThinkingExtractor:
         
         # Look for thinking tags in the content
         # Pattern: <thinking>...</thinking>
-        thinking_pattern = r'<thinking>(.*?)</thinking>'
+        thinking_pattern = r'<think>(.*?)</think>'
         thinking_match = re.search(thinking_pattern, content, re.DOTALL | re.IGNORECASE)
         
         if thinking_match:
@@ -119,7 +119,7 @@ class ThinkingExtractor:
             cleaned_content = re.sub(thinking_pattern, '', content, flags=re.DOTALL | re.IGNORECASE).strip()
         else:
             # Look for reasoning tags as fallback
-            reasoning_pattern = r'<reasoning>(.*?)</reasoning>'
+            reasoning_pattern = r'<reason>(.*?)</reason>'
             reasoning_match = re.search(reasoning_pattern, content, re.DOTALL | re.IGNORECASE)
             
             if reasoning_match:

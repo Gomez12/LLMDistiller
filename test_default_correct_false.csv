@@ -1,0 +1,3 @@
+json_id,category,question,golden_answer,answer_schema
+21,math,"What is 4+4?","8","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"number\"}}}"
+22,science,"What is N2?","Nitrogen","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"

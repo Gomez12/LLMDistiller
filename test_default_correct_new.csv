@@ -1,0 +1,6 @@
+json_id,category,question,golden_answer,answer_schema
+11,math,"What is 3+3?","6","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"number\"}}}"
+12,science,"What is CO2?","Carbon Dioxide","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+13,history,"Who was second president of United States?","John Adams","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+14,geography,"What is the capital of Germany?","Berlin","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+15,literature,"Who wrote Hamlet?","William Shakespeare","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
