@@ -45,13 +45,28 @@ def init(ctx):
 @click.option(
     "--type", "-t", type=click.Choice(["csv"]), default="csv", help="File type"
 )
+@click.option(
+    "--default-correct",
+    type=click.Choice(["true", "false", "null"]),
+    help="Default waarde voor is_correct (null/true/false)"
+)
 @click.pass_context
-def import_data(ctx, file_path: str, type: str):
+def import_data(ctx, file_path: str, type: str, default_correct: Optional[str]):
     """Import data from a file."""
     db_manager = ctx.obj["db_manager"]
 
+    # Convert default_correct string to boolean/None
+    default_correct_value = None
+    if default_correct:
+        if default_correct.lower() == "true":
+            default_correct_value = True
+        elif default_correct.lower() == "false":
+            default_correct_value = False
+        elif default_correct.lower() == "null":
+            default_correct_value = None
+
     if type == "csv":
-        importer = CSVImporter(db_manager)
+        importer = CSVImporter(db_manager, default_correct=default_correct_value)
     else:
         click.echo(f"Unsupported file type: {type}")
         return
@@ -174,13 +189,16 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
                             click.echo(f"Warning: Invalid schema for question {question.id}")
                     
                     if is_valid:
+                        # Use default_correct from question if available, otherwise True (schema validated)
+                        is_correct_value = question.default_correct if question.default_correct is not None else True
+                        
                         # Save valid response
                         new_response = Response(
                             question_id=question.id,
                             provider_name=provider_name,
                             model_name=response_obj.model,
                             response_text=response_obj.content,
-                            is_correct=True, # Auto-validated by schema
+                            is_correct=is_correct_value,
                             tokens_used=response_obj.tokens_used,
                             processing_time_ms=response_obj.metadata.get("processing_time_ms")
                         )

@@ -16,6 +16,7 @@ class QuestionData:
         question_text: Optional[str] = None,
         golden_answer: Optional[str] = None,
         answer_schema: Optional[str] = None,
+        default_correct: Optional[bool] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
         self.json_id = json_id
@@ -23,6 +24,7 @@ class QuestionData:
         self.question_text = question_text
         self.golden_answer = golden_answer
         self.answer_schema = answer_schema
+        self.default_correct = default_correct
         self.metadata = metadata or {}
 
     def __repr__(self) -> str:
