@@ -1,0 +1,83 @@
+{
+  "database": {
+    "url": "sqlite:///./llm_distiller.db",
+    "echo": false
+  },
+  "llm_providers": {
+    "openai_main": {
+      "type": "openai",
+      "api_key": "",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-3.5-turbo",
+      "rate_limit": {
+        "requests_per_minute": 60,
+        "requests_per_hour": 1000,
+        "tokens_per_minute": 40000,
+        "retry_after_seconds": 60
+      },
+      "generation_params": {
+        "temperature": 0.7,
+        "max_tokens": 1000,
+        "top_p": 1.0,
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0
+      }
+    },
+    "local_ollama": {
+      "type": "openai",
+      "api_key": "ollama",
+      "base_url": "http://localhost:11434/v1",
+      "model": "llama2",
+      "rate_limit": {
+        "requests_per_minute": 1000,
+        "requests_per_hour": 10000,
+        "tokens_per_minute": 1000000,
+        "retry_after_seconds": 5
+      },
+      "generation_params": {
+        "temperature": 0.8,
+        "max_tokens": 2000,
+        "top_p": 0.9,
+        "frequency_penalty": 0.1,
+        "presence_penalty": 0.1
+      }
+    },
+    "azure_openai": {
+      "type": "azure_openai",
+      "api_key": "",
+      "base_url": "https://your-resource.openai.azure.com/",
+      "model": "gpt-4",
+      "rate_limit": {
+        "requests_per_minute": 300,
+        "requests_per_hour": 3000,
+        "tokens_per_minute": 120000,
+        "retry_after_seconds": 30
+      },
+      "generation_params": {
+        "temperature": 0.5,
+        "max_tokens": 1500,
+        "top_p": 1.0,
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0
+      }
+    }
+  },
+  "processing": {
+    "batch_size": 10,
+    "max_retries": 3,
+    "timeout_seconds": 120,
+    "validate_responses": true,
+    "generation_params": {
+      "temperature": 0.7,
+      "max_tokens": 1000,
+      "top_p": 1.0,
+      "frequency_penalty": 0.0,
+      "presence_penalty": 0.0
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": null,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}

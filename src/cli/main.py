@@ -1,16 +1,18 @@
 """CLI interface for LLM Distiller."""
 
 import asyncio
-import logging
+import json
 import os
 from typing import Optional
 
 import click
 
 from ..config import Settings
-from ..database import DatabaseManager
+from ..database import DatabaseManager, Question, Response, InvalidResponse
 from ..exporters import DatasetExporter
 from ..importers import CSVImporter
+from ..llm import OpenAIProvider
+from ..validators.schema_validator import SchemaValidator
 
 
 @click.group()
@@ -22,39 +24,6 @@ def cli(ctx, config: Optional[str]):
     """LLM Distiller - Create high-quality datasets for fine-tuning."""
     ctx.ensure_object(dict)
     ctx.obj["settings"] = Settings.load(config)
-    
-    # Setup logging
-    logging_config = ctx.obj["settings"].logging
-    
-    # Set log level - use DEBUG for TRACE since we can't easily add custom levels
-    log_level_str = logging_config.level.upper()
-    if log_level_str == "TRACE":
-        log_level = logging.DEBUG  # Use DEBUG level for TRACE
-    else:
-        log_level = getattr(logging, log_level_str)
-    
-    logging.basicConfig(
-        level=log_level,
-        format=logging_config.format,
-        filename=logging_config.file_path
-    )
-    
-    # Also log to console for errors and above if enabled
-    if logging_config.console_errors:
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.ERROR)
-        console_formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
-        console_handler.setFormatter(console_formatter)
-        logging.getLogger().addHandler(console_handler)
-    
-    # Log configuration summary
-    logger = logging.getLogger(__name__)
-    logger.info(f"Configuration loaded with {len(ctx.obj['settings'].llm_providers)} LLM providers")
-    if ctx.obj["settings"].llm_providers:
-        logger.info(f"Available providers: {', '.join(ctx.obj['settings'].llm_providers.keys())}")
-    else:
-        logger.warning("No LLM providers configured - processing will fail")
-    
     ctx.obj["db_manager"] = DatabaseManager(
         database_url=ctx.obj["settings"].database.url,
         echo=ctx.obj["settings"].database.echo,
@@ -71,20 +40,21 @@ def init(ctx):
     click.echo("Database initialized successfully!")
 
 
-@cli.group(name="import")
-def import_cmd():
-    """Import data from various sources."""
-    pass
-
-
-@import_cmd.command()
+@cli.command()
 @click.argument("file_path", type=click.Path(exists=True))
-@click.option("--default-correct", help="Default correct answer for missing values")
+@click.option(
+    "--type", "-t", type=click.Choice(["csv"]), default="csv", help="File type"
+)
 @click.pass_context
-def csv(ctx, file_path: str, default_correct: Optional[str]):
-    """Import data from a CSV file."""
+def import_data(ctx, file_path: str, type: str):
+    """Import data from a file."""
     db_manager = ctx.obj["db_manager"]
-    importer = CSVImporter(db_manager)
+
+    if type == "csv":
+        importer = CSVImporter(db_manager)
+    else:
+        click.echo(f"Unsupported file type: {type}")
+        return
 
     click.echo(f"Importing data from {file_path}...")
 
@@ -113,79 +83,157 @@ def csv(ctx, file_path: str, default_correct: Optional[str]):
 @click.pass_context
 def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
     """Process questions with LLM."""
-    click.echo(f"Processing {limit} questions...")
+    settings = ctx.obj["settings"]
+    db_manager = ctx.obj["db_manager"]
+    
+    # Determine provider
+    provider_name = provider or next(iter(settings.llm_providers.keys()), None)
+    if not provider_name:
+        click.echo("❌ No LLM provider configured. Please check your configuration.")
+        return
+        
+    provider_config = settings.get_provider_config(provider_name)
+    if not provider_config:
+        click.echo(f"❌ Provider '{provider_name}' not found in configuration.")
+        return
+
+    click.echo(f"Processing up to {limit} questions with {provider_name}...")
     if category:
         click.echo(f"Filtering by category: {category}")
-    if provider:
-        click.echo(f"Using provider: {provider}")
 
+    # Initialize components
+    try:
+        llm_provider = OpenAIProvider(provider_config)
+    except Exception as e:
+        click.echo(f"❌ Failed to initialize provider: {e}")
+        return
+        
+    validator = SchemaValidator()
+    
     async def run_processing():
-        from ..processing import ProcessingEngine
+        processed_count = 0
+        error_count = 0
         
-        engine = ProcessingEngine(
-            db_manager=ctx.obj["db_manager"],
-            settings=ctx.obj["settings"]
-        )
-        
-        if provider:
-            click.echo(f"Using provider: {provider}")
-        else:
-            available_providers = list(ctx.obj["settings"].llm_providers.keys())
-            if available_providers:
-                click.echo(f"No provider specified, will use load balancing across: {', '.join(available_providers)}")
-            else:
-                click.echo("❌ No LLM providers configured!")
-                click.echo("")
-                click.echo("To fix this:")
-                click.echo("1. Create a config.json file:")
-                click.echo("   cp config.example.json config.json")
-                click.echo("   # Edit config.json with your API keys and settings")
-                click.echo("")
-                click.echo("2. Or specify a config file:")
-                click.echo("   python -m src.main process --config your-config.json")
-                click.echo("")
-                click.echo("3. Or set environment variables (limited support):")
-                click.echo("   export OPENAI_API_KEY='your-key'")
-                click.echo("")
-                return
-        
-        result = await engine.process_questions(
-            category=category,
-            limit=limit,
-            provider=provider
-        )
-        
-        # Display results
-        if result.success:
-            click.echo(f"✅ Processing completed successfully!")
-            click.echo(f"📊 Results:")
-            click.echo(f"   Total questions: {result.stats.total_questions}")
-            click.echo(f"   Processed: {result.stats.processed_questions}")
-            click.echo(f"   Successful: {result.stats.successful_responses}")
-            click.echo(f"   Failed: {result.stats.failed_responses}")
-            click.echo(f"   Invalid: {result.stats.invalid_responses}")
+        # Use a new session for processing
+        with db_manager.session_scope() as session:
+            # Query questions
+            query = session.query(Question)
             
-            if result.stats.processing_time_seconds > 0:
-                click.echo(f"   Processing time: {result.stats.processing_time_seconds:.1f}s")
-                click.echo(f"   Speed: {result.stats.questions_per_second:.1f} questions/sec")
+            if category:
+                query = query.filter(Question.category == category)
+                
+            # Filter out questions that already have a valid response from this provider
+            # This is a bit complex in SQLAlchemy without subqueries, so we'll do naive fetching for now
+            # and check existence in the loop or assume we want to re-process if explicitly asked?
+            # For this implementation, let's just fetch all candidates and check locally or trust the user.
+            # Ideally: Left join Response where provider_name matches and is_correct is not False
             
-            if result.stats.total_tokens_used > 0:
-                click.echo(f"   Total tokens: {result.stats.total_tokens_used:,}")
-                click.echo(f"   Avg tokens/question: {result.stats.average_tokens_per_question:.0f}")
+            # Simple approach: fetch questions without responses first
+            # We want to process questions that have NO response from THIS provider
             
-            if result.errors:
-                click.echo(f"⚠️  Warnings/Errors:")
-                for error in result.errors[:5]:
-                    click.echo(f"   • {error}")
-                if len(result.errors) > 5:
-                    click.echo(f"   ... and {len(result.errors) - 5} more")
-        else:
-            click.echo(f"❌ Processing failed!")
-            for error in result.errors:
-                click.echo(f"   • {error}")
+            # Subquery for questions already processed by this provider
+            processed_subquery = session.query(Response.question_id).filter(
+                Response.provider_name == provider_name
+            )
+            
+            query = query.filter(Question.id.notin_(processed_subquery))
+            
+            questions = query.limit(limit).all()
+            
+            if not questions:
+                click.echo("No pending questions found to process.")
+                return 0, 0
 
-    import asyncio
-    asyncio.run(run_processing())
+            click.echo(f"Found {len(questions)} questions to process.")
+            
+            for question in questions:
+                try:
+                    # Generate response
+                    click.echo(f"Processing question {question.id}...")
+                    
+                    response_obj = await llm_provider.generate_response(
+                        question.question_text, 
+                        settings.processing.generation_params
+                    )
+                    
+                    # Validate if schema exists
+                    is_valid = True
+                    error_msg = None
+                    
+                    if settings.processing.validate_responses and question.answer_schema:
+                        try:
+                            schema = json.loads(question.answer_schema)
+                            validation_result = validator.validate_response(
+                                response_obj.content, schema
+                            )
+                            is_valid = validation_result.is_valid
+                            if not is_valid:
+                                error_msg = "; ".join(validation_result.errors)
+                        except json.JSONDecodeError:
+                            # Schema itself is invalid, but we got a response
+                            click.echo(f"Warning: Invalid schema for question {question.id}")
+                    
+                    if is_valid:
+                        # Save valid response
+                        new_response = Response(
+                            question_id=question.id,
+                            provider_name=provider_name,
+                            model_name=response_obj.model,
+                            response_text=response_obj.content,
+                            is_correct=True, # Auto-validated by schema
+                            tokens_used=response_obj.tokens_used,
+                            processing_time_ms=response_obj.metadata.get("processing_time_ms")
+                        )
+                        session.add(new_response)
+                        processed_count += 1
+                        click.echo(f"✅ Question {question.id} processed successfully")
+                    else:
+                        # Save invalid response
+                        invalid_resp = InvalidResponse(
+                            question_id=question.id,
+                            provider_name=provider_name,
+                            model_name=response_obj.model,
+                            response_text=response_obj.content,
+                            error_message=error_msg or "Validation failed",
+                            error_type="schema_validation",
+                            tokens_used=response_obj.tokens_used,
+                            processing_time_ms=response_obj.metadata.get("processing_time_ms")
+                        )
+                        session.add(invalid_resp)
+                        error_count += 1
+                        click.echo(f"⚠️ Question {question.id} validation failed: {error_msg}")
+                        
+                    # Commit per question to save progress? 
+                    # session_scope commits at end, but we might want to commit intermediate results
+                    # calling session.commit() here is safe within session_scope (it just commits transaction)
+                    session.commit()
+                    
+                except Exception as e:
+                    click.echo(f"❌ Error processing question {question.id}: {e}")
+                    error_count += 1
+                    # Try to save system error invalid response
+                    try:
+                        err_resp = InvalidResponse(
+                            question_id=question.id,
+                            provider_name=provider_name,
+                            model_name=provider_config.model,
+                            response_text="",
+                            error_message=str(e),
+                            error_type="system_error"
+                        )
+                        session.add(err_resp)
+                        session.commit()
+                    except:
+                        session.rollback()
+        
+        return processed_count, error_count
+
+    # Run logic
+    processed, errors = asyncio.run(run_processing())
+    
+    click.echo(f"\nProcessing complete!")
+    click.echo(f"✅ Successful: {processed}")
+    click.echo(f"❌ Failed: {errors}")
 
 
 @cli.command()
@@ -234,7 +282,7 @@ def status(ctx):
     db_manager = ctx.obj["db_manager"]
 
     with db_manager.session_scope() as session:
-        from ..database.models import InvalidResponse, Question, Response
+        # Imports are now top-level
 
         question_count = session.query(Question).count()
         response_count = session.query(Response).count()

@@ -1,0 +1,3 @@
+json_id,category,question,answer_schema
+1,math,What is 2+2?,{"type": "object", "properties": {"answer": {"type": "number"}}}
+2,science,What is H2O?,{"type": "object", "properties": {"formula": {"type": "string", "pattern": "^[A-Z0-9]+$"}}

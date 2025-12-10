@@ -1,0 +1,153 @@
+site_name: LLM Distiller
+site_description: A Distiller for smaller specialized models
+site_author: LLM Distiller Team
+site_url: https://llm-distiller.github.io
+
+repo_name: llm-distiller/LLMDistiller
+repo_url: https://github.com/llm-distiller/LLMDistiller
+
+copyright: Copyright &copy; 2024 LLM Distiller Team
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - header.autohide
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+  - glightbox
+  - mermaid2
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_members_full_path: false
+            merge_init_into_class: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+      title: Contents
+  - tables
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: llm-distiller
+      repo: LLMDistiller
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Overview:
+      - Project Overview: 01-overview/project-overview.md
+      - Architecture: 01-overview/architecture.md
+      - Design Decisions: 01-overview/design-decisions.md
+  - Database:
+      - Schema: 02-database/schema.md
+      - Models: 02-database/models.md
+      - Migrations: 02-database/migrations.md
+  - Configuration:
+      - Reference: 03-configuration/config-reference.md
+      - Providers: 03-configuration/providers.md
+      - Examples: 03-configuration/examples/config-examples.md
+  - API:
+      - CLI Reference: 04-api/cli-reference.md
+      - Importers: 04-api/importers.md
+      - LLM Client: 04-api/llm-client.md
+      - Validation: 04-api/validation.md
+  - Implementation:
+      - Setup: 05-implementation/setup.md
+      - Testing: 05-implementation/testing.md
+      - Contributing: 05-implementation/contributing.md
+  - Examples:
+      - Quick Start: 06-examples/quick-start.md
+  - API Reference:
+      - src.cli: reference/cli.md
+      - src.database: reference/database.md
+      - src.llm: reference/llm.md
+      - src.importers: reference/importers.md
+      - src.validators: reference/validators.md
+      - src.exporters: reference/exporters.md
+      - src.config: reference/config.md
+      - src.utils: reference/utils.md
+
+extra:
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/llm-distiller/LLMDistiller
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/llm-distiller/
+  version:
+    provider: mike

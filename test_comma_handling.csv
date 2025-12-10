@@ -1,0 +1,4 @@
+json_id,category,question,answer_schema
+1,math,"What is 2+2?","{""type"": ""object"", ""properties"": {""answer"": {""type"": ""number""}, ""steps"": {""type"": ""array"", ""items"": {""type"": ""string""}}}, ""required"": [""answer""]}"
+2,science,"What is H2O?","{""type"": ""object"", ""properties"": {""formula"": {""type"": ""string"", ""pattern"": ""^[A-Z0-9]+$""}, ""description"": {""type"": ""string"", ""minLength"": 1, ""maxLength"": 500}}}"
+3,history,"Who was the first US president?","{""type"": ""object"", ""properties"": {""name"": {""type"": ""string""}, ""years"": {""type"": ""object"", ""properties"": {""start"": {""type"": ""number""}, ""end"": {""type"": ""number""}}}}, ""required"": [""name""]}"
