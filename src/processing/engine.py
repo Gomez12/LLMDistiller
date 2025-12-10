@@ -52,7 +52,8 @@ class ProcessingEngine:
         self,
         category: Optional[str] = None,
         limit: Optional[int] = None,
-        provider: Optional[str] = None
+        provider: Optional[str] = None,
+        default_system_prompt: Optional[str] = None
     ) -> ProcessingResult:
         """Process questions with LLM.
         
@@ -93,12 +94,16 @@ class ProcessingEngine:
             # Create tasks and add to queue
             tasks = []
             for q in questions:
+                # Use question-specific system prompt or default
+                system_prompt = q['system_prompt'] or default_system_prompt
+                
                 task = QuestionTask(
                     question_id=q['id'],
                     category=q['category'],
                     question_text=q['question_text'],
                     golden_answer=q['golden_answer'],
                     answer_schema=q['answer_schema'],
+                    system_prompt=system_prompt,
                     provider_name=provider,
                     max_retries=self.settings.processing.max_retries
                 )
@@ -177,6 +182,7 @@ class ProcessingEngine:
                         'question_text': q.question_text,
                         'golden_answer': q.golden_answer,
                         'answer_schema': q.answer_schema,
+                        'system_prompt': q.system_prompt,
                         'created_at': q.created_at,
                         'updated_at': q.updated_at
                     }

@@ -292,9 +292,38 @@ class CSVImporter(BaseImporter):
   "json_id": "external_id",
   "category": "type",
   "question": "prompt",
+  "system_prompt": "system_prompt",
   "golden_answer": "reference_answer",
   "answer_schema": "response_schema"
 }
+```
+
+### System Prompt Support
+
+De CSV importer ondersteunt nu system prompts met de volgende kolomnamen:
+- `system_prompt` (standaard)
+- `system_prompt` (alternatief)
+- `prompt` (fallback)
+
+System prompts worden gecombineerd met de vraag tijdens de processing:
+```
+System Prompt: "You are a helpful math assistant. Always provide numerical answers."
+Question: "What is 2+2?"
+Combined: "You are a helpful math assistant. Always provide numerical answers.
+
+What is 2+2?"
+```
+
+#### CLI Gebruik met System Prompts
+```bash
+# Import CSV met system prompts
+python -m src.main import questions_with_system_prompts.csv
+
+# Process met default system prompt voor vragen zonder system prompt
+python -m src.main process --system-prompt "You are a helpful assistant."
+
+# Process specifieke categorie met custom system prompt
+python -m src.main process --category math --system-prompt "You are a math expert."
 ```
 
 ### CSV Format Examples
@@ -306,11 +335,26 @@ json_id,category,question,golden_answer,answer_schema
 2,science,"What is H2O?","Water","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
 ```
 
+#### Format with System Prompts
+```csv
+json_id,category,question,system_prompt,answer_schema
+1,math,"What is 2+2?","You are a helpful math assistant. Always provide numerical answers.","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"number\"}}}"
+2,science,"What is H2O?","You are a chemistry expert. Explain chemical concepts clearly.","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+3,history,"Who was the first US president?","You are a history teacher. Provide accurate historical information.","{\"type\": \"object\", \"properties\": {\"name\": {\"type\": \"string\"}}}"
+```
+
 #### Custom Format with Mapping
 ```csv
 external_id,type,prompt,reference_answer,response_schema
 1,math,"Calculate: 2+2","4","{\"answer\": \"number\"}"
 2,science,"Identify H2O","Water","{\"answer\": \"string\"}"
+```
+
+#### Custom Format with System Prompts and Mapping
+```csv
+external_id,type,prompt,system_prompt,reference_answer,response_schema
+1,math,"Calculate: 2+2","You are a precise calculator. Return only numerical results.","4","{\"answer\": \"number\"}"
+2,science,"Identify H2O","You are a chemistry professor. Use proper chemical terminology.","Water","{\"answer\": \"string\"}"
 ```
 
 ## 📄 JSON Importer

@@ -1,0 +1,6 @@
+json_id,category,question,system_prompt,answer_schema
+1,math,"What is 2+2?","You are a helpful math assistant. Always provide numerical answers.","{""type"": ""object"", ""properties"": {""answer"": {""type"": ""number""}}, ""required"": [""answer""]}"
+2,science,"What is H2O?","You are a chemistry expert. Explain chemical concepts clearly.","{""type"": ""object"", ""properties"": {""answer"": {""type"": ""string""}}, ""required"": [""answer""]}"
+3,history,"Who was the first president of the United States?","You are a history teacher. Provide accurate historical information.","{""type"": ""object"", ""properties"": {""name"": {""type"": ""string""}, ""year"": {""type"": ""number""}}, ""required"": [""name""]}"
+4,math,"Calculate 15 * 8","You are a precise calculator. Return only numerical results.","{""type"": ""object"", ""properties"": {""result"": {""type"": ""number""}}, ""required"": [""result""]}"
+5,science,"What is the chemical formula for glucose?","You are a biochemistry specialist. Use proper chemical notation.","{""type"": ""object"", ""properties"": {""formula"": {""type"": ""string""}}, ""required"": [""formula""]}"

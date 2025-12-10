@@ -1,0 +1,6 @@
+external_id,type,prompt,system_prompt,reference_answer,response_schema
+1,math,"Calculate: 2+2","You are a precise calculator. Return only numerical results.","4","{""answer"": ""number""}"
+2,science,"Identify H2O","You are a chemistry professor. Use proper chemical terminology.","Water","{""answer"": ""string""}"
+3,history,"First US president?","You are a history expert. Provide concise answers.","George Washington","{""name"": ""string""}"
+4,math,"What is square root of 144?","You are a math tutor. Show your work clearly.","12","{""result"": ""number""}"
+5,science,"What is photosynthesis?","You are a biology teacher. Explain in simple terms.","Process where plants convert sunlight to energy","{""explanation"": ""string""}"

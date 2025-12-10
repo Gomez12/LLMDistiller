@@ -76,6 +76,7 @@ class QuestionTask:
     question_text: str
     golden_answer: Optional[str]
     answer_schema: Optional[str]
+    system_prompt: Optional[str] = None
     provider_name: Optional[str] = None
     retry_count: int = 0
     max_retries: int = 3

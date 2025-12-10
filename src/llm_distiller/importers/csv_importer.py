@@ -66,6 +66,7 @@ class CSVImporter(BaseImporter):
                         question_text=row.get("question") or row.get("question_text"),
                         golden_answer=row.get("golden_answer") or row.get("answer"),
                         answer_schema=row.get("answer_schema") or row.get("schema"),
+                        system_prompt=row.get("system_prompt") or row.get("system_prompt") or row.get("prompt"),
                         default_correct=self.default_correct,
                         metadata={"row_number": row_num, "source_file": source},
                     )
@@ -126,6 +127,7 @@ class CSVImporter(BaseImporter):
                         question_text=question_data.question_text,
                         golden_answer=question_data.golden_answer,
                         answer_schema=question_data.answer_schema,
+                        system_prompt=question_data.system_prompt,
                         default_correct=question_data.default_correct,
                     )
 

@@ -115,7 +115,8 @@ class LLMProviderManager:
     async def generate_response_with_failover(
         self, 
         prompt: str, 
-        preferred_provider: Optional[str] = None
+        preferred_provider: Optional[str] = None,
+        system_prompt: Optional[str] = None
     ) -> WorkerResult:
         """Generate response with automatic failover.
         
@@ -127,6 +128,7 @@ class LLMProviderManager:
             WorkerResult with response or error details
         """
         logger.debug(f"[DEBUG] Starting response generation with failover")
+        logger.debug(f"[DEBUG] System prompt: {system_prompt[:100] if system_prompt else 'None'}")
         logger.debug(f"[DEBUG] Prompt (first 200 chars): {prompt[:200]}")
         logger.debug(f"[DEBUG] Preferred provider: {preferred_provider}")
         logger.debug(f"[DEBUG] Available providers: {list(self.providers.keys())}")
@@ -160,12 +162,18 @@ class LLMProviderManager:
                     await rate_limiter.acquire()
                     logger.debug(f"[DEBUG] Rate limit check passed for provider '{provider_name}'")
                 
+                # Combine system prompt with user prompt if provided
+                full_prompt = prompt
+                if system_prompt:
+                    full_prompt = f"{system_prompt}\n\n{prompt}"
+                    logger.debug(f"[DEBUG] Combined prompt with system prompt")
+                
                 # Generate response
                 logger.debug(f"[DEBUG] Calling generate_response on provider '{provider_name}'")
                 logger.debug(f"[DEBUG] Generation params: {self.settings.processing.generation_params}")
                 
                 response = await provider.generate_response(
-                    prompt, 
+                    full_prompt, 
                     self.settings.processing.generation_params
                 )
                 

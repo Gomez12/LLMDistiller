@@ -58,7 +58,8 @@ class QuestionWorker:
             logger.debug(f"[DEBUG] Calling provider manager for question {task.question_id}")
             result = await self.provider_manager.generate_response_with_failover(
                 prompt=task.question_text,
-                preferred_provider=task.provider_name
+                preferred_provider=task.provider_name,
+                system_prompt=task.system_prompt
             )
             
             # Set question ID

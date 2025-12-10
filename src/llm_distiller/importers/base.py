@@ -16,6 +16,7 @@ class QuestionData:
         question_text: Optional[str] = None,
         golden_answer: Optional[str] = None,
         answer_schema: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         default_correct: Optional[bool] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
@@ -24,6 +25,7 @@ class QuestionData:
         self.question_text = question_text
         self.golden_answer = golden_answer
         self.answer_schema = answer_schema
+        self.system_prompt = system_prompt
         self.default_correct = default_correct
         self.metadata = metadata or {}
 

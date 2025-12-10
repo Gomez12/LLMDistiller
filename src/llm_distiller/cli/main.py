@@ -97,8 +97,11 @@ def import_data(ctx, file_path: str, type: str, default_correct: Optional[str]):
     "--limit", "-l", type=int, default=10, help="Number of questions to process"
 )
 @click.option("--provider", "-p", help="LLM provider to use")
+@click.option(
+    "--system-prompt", "-s", help="Default system prompt to use for all questions"
+)
 @click.pass_context
-def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
+def process(ctx, category: Optional[str], limit: int, provider: Optional[str], system_prompt: Optional[str]):
     """Process questions with LLM."""
     settings = ctx.obj["settings"]
     db_manager = ctx.obj["db_manager"]
@@ -114,7 +117,7 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
         click.echo(f"Using provider: {provider}")
     
     async def run_processing():
-        result = await engine.process_questions(category, limit, provider)
+        result = await engine.process_questions(category, limit, provider, system_prompt)
         
         # Report results
         click.echo(f"\nProcessing complete!")

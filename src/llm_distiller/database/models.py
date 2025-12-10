@@ -29,6 +29,7 @@ class Question(Base):
     question_text = Column(Text, nullable=False)
     golden_answer = Column(Text, nullable=True)
     answer_schema = Column(Text, nullable=True)  # JSON string
+    system_prompt = Column(Text, nullable=True)  # System prompt for LLM
     default_correct = Column(Boolean, nullable=True)  # Default correctness for responses
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
