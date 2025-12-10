@@ -22,7 +22,7 @@ class TestCLICommands:
         assert result.exit_code == 0
         assert 'LLM Distiller' in result.output
         assert 'init' in result.output
-        assert 'import-data' in result.output
+        assert 'import' in result.output
         assert 'export' in result.output
         assert 'status' in result.output
 
@@ -48,7 +48,7 @@ class TestCLICommands:
         
         with patch('llm_distiller.cli.main.CSVImporter', return_value=mock_importer):
             with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
-                result = runner.invoke(cli, ['import-data', sample_csv_file, '--type', 'csv'])
+                result = runner.invoke(cli, ['import', sample_csv_file, '--type', 'csv'])
                 
                 assert result.exit_code == 0
                 assert f'Importing data from {sample_csv_file}' in result.output
@@ -67,7 +67,7 @@ class TestCLICommands:
         
         with patch('llm_distiller.cli.main.CSVImporter', return_value=mock_importer):
             with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
-                result = runner.invoke(cli, ['import-data', sample_csv_file, '--type', 'csv'])
+                result = runner.invoke(cli, ['import', sample_csv_file, '--type', 'csv'])
                 
                 assert result.exit_code == 0
                 assert 'Import failed with 2 errors' in result.output
@@ -77,7 +77,7 @@ class TestCLICommands:
     def test_import_data_unsupported_type(self, runner, test_db_manager, sample_csv_file):
         """Test importing with unsupported file type."""
         with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
-            result = runner.invoke(cli, ['import-data', sample_csv_file, '--type', 'xml'])
+            result = runner.invoke(cli, ['import', sample_csv_file, '--type', 'xml'])
             
             assert result.exit_code == 2
             assert 'Invalid value for' in result.output
@@ -85,7 +85,7 @@ class TestCLICommands:
     def test_import_data_nonexistent_file(self, runner, test_db_manager):
         """Test importing non-existent file."""
         with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
-            result = runner.invoke(cli, ['import-data', 'nonexistent.csv', '--type', 'csv'])
+            result = runner.invoke(cli, ['import', 'nonexistent.csv', '--type', 'csv'])
             
             assert result.exit_code != 0  # Should fail
 

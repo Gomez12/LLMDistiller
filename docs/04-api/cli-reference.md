@@ -59,9 +59,7 @@ llm-distiller init --example-config
 ✓ Setup complete! Run 'llm-distiller import --help' to get started.
 ```
 
-## 📥 Import Commands
-
-Importeer data uit diverse bronnen.
+## 📥 Import Ccommand: import uit diverse bronnen.
 
 ### CSV Import
 ```bash

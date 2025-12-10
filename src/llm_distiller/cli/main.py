@@ -40,7 +40,7 @@ def init(ctx):
     click.echo("Database initialized successfully!")
 
 
-@cli.command()
+@cli.command(name="import")
 @click.argument("file_path", type=click.Path(exists=True))
 @click.option(
     "--type", "-t", type=click.Choice(["csv"]), default="csv", help="File type"

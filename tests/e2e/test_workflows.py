@@ -33,7 +33,7 @@ class TestQuickSetupWorkflow:
         assert result.returncode == 0
         assert 'LLM Distiller' in result.stdout
         assert 'init' in result.stdout
-        assert 'import-data' in result.stdout
+        assert 'import' in result.stdout
 
     def test_database_initialization_workflow(self, temp_output_dir):
         """Test complete database initialization workflow."""
@@ -129,7 +129,7 @@ class TestQuickSetupWorkflow:
         
         # Import data
         import_result = subprocess.run(
-            ['llm-distiller', '--config', str(config_file), 'import-data', str(csv_file), '--type', 'csv'],
+            ['llm-distiller', '--config', str(config_file), 'import', str(csv_file), '--type', 'csv'],
             capture_output=True,
             text=True
         )
@@ -188,7 +188,7 @@ class TestQuickSetupWorkflow:
         
         # Initialize and import
         subprocess.run(['llm-distiller', '--config', str(config_file), 'init'], capture_output=True)
-        subprocess.run(['llm-distiller', '--config', str(config_file), 'import-data', str(csv_file), '--type', 'csv'], capture_output=True)
+        subprocess.run(['llm-distiller', '--config', str(config_file), 'import', str(csv_file), '--type', 'csv'], capture_output=True)
         
         # Test export
         export_file = temp_output_dir / "export.jsonl"
@@ -234,7 +234,7 @@ class TestQuickSetupWorkflow:
         subprocess.run(['llm-distiller', '--config', str(config_file), 'init'], capture_output=True)
         
         import_result = subprocess.run(
-            ['llm-distiller', '--config', str(config_file), 'import-data', 'nonexistent.csv', '--type', 'csv'],
+            ['llm-distiller', '--config', str(config_file), 'import', 'nonexistent.csv', '--type', 'csv'],
             capture_output=True,
             text=True
         )
