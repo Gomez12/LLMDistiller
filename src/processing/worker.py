@@ -230,7 +230,7 @@ class QuestionWorker:
                 provider_name=result.provider_name,
                 model_name=result.model_name,
                 response_text=result.response_text,
-                thinking=getattr(result, 'thinking', None),
+                thinking=result.thinking or None,
                 tokens_used=result.tokens_used,
                 processing_time_ms=result.processing_time_ms,
                 # Cost calculation would go here if implemented
@@ -252,7 +252,7 @@ class QuestionWorker:
                 provider_name=result.provider_name,
                 model_name=result.model_name,
                 response_text=result.response_text or "",
-                thinking=getattr(result, 'thinking', None),
+                thinking=result.thinking or None,
                 error_message=result.error_message or "Unknown error",
                 error_type=result.error_type or "unknown",
                 tokens_used=result.tokens_used,
