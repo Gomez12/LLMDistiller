@@ -6,10 +6,10 @@ import random
 import traceback
 from typing import Dict, List, Optional, Type
 
-from ..config import ProviderConfig, Settings
-from ..llm.base import BaseLLMProvider
-from ..llm.openai_provider import OpenAIProvider
-from ..utils.rate_limiter import RateLimiter
+from llm_distiller.config import ProviderConfig, Settings
+from llm_distiller.llm.base import BaseLLMProvider
+from llm_distiller.llm.openai_provider import OpenAIProvider
+from llm_distiller.utils.rate_limiter import RateLimiter
 from .models import WorkerResult
 
 logger = logging.getLogger(__name__)

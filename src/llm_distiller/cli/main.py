@@ -11,8 +11,6 @@ from ..config import Settings
 from ..database import DatabaseManager, Question, Response, InvalidResponse
 from ..exporters import DatasetExporter
 from ..importers import CSVImporter
-from ..llm import OpenAIProvider
-from ..validators.schema_validator import SchemaValidator
 
 
 @click.group()
@@ -101,157 +99,45 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str]):
     settings = ctx.obj["settings"]
     db_manager = ctx.obj["db_manager"]
     
-    # Determine provider
-    provider_name = provider or next(iter(settings.llm_providers.keys()), None)
-    if not provider_name:
-        click.echo("❌ No LLM provider configured. Please check your configuration.")
-        return
-        
-    provider_config = settings.get_provider_config(provider_name)
-    if not provider_config:
-        click.echo(f"❌ Provider '{provider_name}' not found in configuration.")
-        return
-
-    click.echo(f"Processing up to {limit} questions with {provider_name}...")
+    # Use the processing engine
+    from processing.engine import ProcessingEngine
+    engine = ProcessingEngine(db_manager, settings)
+    
+    click.echo(f"Processing up to {limit} questions...")
     if category:
         click.echo(f"Filtering by category: {category}")
-
-    # Initialize components
-    try:
-        llm_provider = OpenAIProvider(provider_config)
-    except Exception as e:
-        click.echo(f"❌ Failed to initialize provider: {e}")
-        return
-        
-    validator = SchemaValidator()
+    if provider:
+        click.echo(f"Using provider: {provider}")
     
     async def run_processing():
-        processed_count = 0
-        error_count = 0
+        result = await engine.process_questions(category, limit, provider)
         
-        # Use a new session for processing
-        with db_manager.session_scope() as session:
-            # Query questions
-            query = session.query(Question)
-            
-            if category:
-                query = query.filter(Question.category == category)
-                
-            # Filter out questions that already have a valid response from this provider
-            # This is a bit complex in SQLAlchemy without subqueries, so we'll do naive fetching for now
-            # and check existence in the loop or assume we want to re-process if explicitly asked?
-            # For this implementation, let's just fetch all candidates and check locally or trust the user.
-            # Ideally: Left join Response where provider_name matches and is_correct is not False
-            
-            # Simple approach: fetch questions without responses first
-            # We want to process questions that have NO response from THIS provider
-            
-            # Subquery for questions already processed by this provider
-            processed_subquery = session.query(Response.question_id).filter(
-                Response.provider_name == provider_name
-            )
-            
-            query = query.filter(Question.id.notin_(processed_subquery))
-            
-            questions = query.limit(limit).all()
-            
-            if not questions:
-                click.echo("No pending questions found to process.")
-                return 0, 0
-
-            click.echo(f"Found {len(questions)} questions to process.")
-            
-            for question in questions:
-                try:
-                    # Generate response
-                    click.echo(f"Processing question {question.id}...")
-                    
-                    response_obj = await llm_provider.generate_response(
-                        question.question_text, 
-                        settings.processing.generation_params
-                    )
-                    
-                    # Validate if schema exists
-                    is_valid = True
-                    error_msg = None
-                    
-                    if settings.processing.validate_responses and question.answer_schema:
-                        try:
-                            schema = json.loads(question.answer_schema)
-                            validation_result = validator.validate_response(
-                                response_obj.content, schema
-                            )
-                            is_valid = validation_result.is_valid
-                            if not is_valid:
-                                error_msg = "; ".join(validation_result.errors)
-                        except json.JSONDecodeError:
-                            # Schema itself is invalid, but we got a response
-                            click.echo(f"Warning: Invalid schema for question {question.id}")
-                    
-                    if is_valid:
-                        # Use default_correct from question if available, otherwise True (schema validated)
-                        is_correct_value = question.default_correct if question.default_correct is not None else True
-                        
-                        # Save valid response
-                        new_response = Response(
-                            question_id=question.id,
-                            provider_name=provider_name,
-                            model_name=response_obj.model,
-                            response_text=response_obj.content,
-                            is_correct=is_correct_value,
-                            tokens_used=response_obj.tokens_used,
-                            processing_time_ms=response_obj.metadata.get("processing_time_ms")
-                        )
-                        session.add(new_response)
-                        processed_count += 1
-                        click.echo(f"✅ Question {question.id} processed successfully")
-                    else:
-                        # Save invalid response
-                        invalid_resp = InvalidResponse(
-                            question_id=question.id,
-                            provider_name=provider_name,
-                            model_name=response_obj.model,
-                            response_text=response_obj.content,
-                            error_message=error_msg or "Validation failed",
-                            error_type="schema_validation",
-                            tokens_used=response_obj.tokens_used,
-                            processing_time_ms=response_obj.metadata.get("processing_time_ms")
-                        )
-                        session.add(invalid_resp)
-                        error_count += 1
-                        click.echo(f"⚠️ Question {question.id} validation failed: {error_msg}")
-                        
-                    # Commit per question to save progress? 
-                    # session_scope commits at end, but we might want to commit intermediate results
-                    # calling session.commit() here is safe within session_scope (it just commits transaction)
-                    session.commit()
-                    
-                except Exception as e:
-                    click.echo(f"❌ Error processing question {question.id}: {e}")
-                    error_count += 1
-                    # Try to save system error invalid response
-                    try:
-                        err_resp = InvalidResponse(
-                            question_id=question.id,
-                            provider_name=provider_name,
-                            model_name=provider_config.model,
-                            response_text="",
-                            error_message=str(e),
-                            error_type="system_error"
-                        )
-                        session.add(err_resp)
-                        session.commit()
-                    except:
-                        session.rollback()
+        # Report results
+        click.echo(f"\nProcessing complete!")
+        click.echo(f"✅ Successful: {result.stats.successful_responses}")
+        click.echo(f"❌ Failed: {result.stats.failed_responses}")
         
-        return processed_count, error_count
-
-    # Run logic
-    processed, errors = asyncio.run(run_processing())
+        if result.stats.invalid_responses > 0:
+            click.echo(f"⚠️ Invalid responses: {result.stats.invalid_responses}")
+        
+        if result.stats.total_tokens_used > 0:
+            click.echo(f"🔤 Total tokens used: {result.stats.total_tokens_used}")
+        
+        if result.stats.processing_time_seconds > 0:
+            click.echo(f"⏱️ Processing time: {result.stats.processing_time_seconds:.2f}s")
+            click.echo(f"📊 Speed: {result.stats.questions_per_second:.2f} questions/second")
+        
+        if result.errors:
+            click.echo(f"\n❌ Errors:")
+            for error in result.errors:
+                click.echo(f"   • {error}")
+        
+        if result.warnings:
+            click.echo(f"\n⚠️ Warnings:")
+            for warning in result.warnings:
+                click.echo(f"   • {warning}")
     
-    click.echo(f"\nProcessing complete!")
-    click.echo(f"✅ Successful: {processed}")
-    click.echo(f"❌ Failed: {errors}")
+    asyncio.run(run_processing())
 
 
 @cli.command()

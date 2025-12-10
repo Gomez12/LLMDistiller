@@ -6,8 +6,9 @@ import traceback
 from datetime import datetime
 from typing import List, Optional
 
-from ..config import Settings
-from ..database.models import Question
+from llm_distiller.config import Settings
+from llm_distiller.database.models import Question
+from llm_distiller.database.manager import DatabaseManager
 from .manager import LLMProviderManager
 from .models import ProcessingResult, ProcessingStats, QuestionTask, ProcessingStatus, WorkerResult
 from .queue import QuestionQueue
@@ -134,7 +135,7 @@ class ProcessingEngine:
             query = session.query(Question)
             
             # Filter out questions that already have responses
-            from ..database.models import Response
+            from llm_distiller.database.models import Response
             query = query.outerjoin(Response).filter(Response.id.is_(None))
             
             if category:

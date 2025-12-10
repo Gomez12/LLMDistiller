@@ -7,8 +7,8 @@ import time
 import traceback
 from typing import Optional
 
-from ..database.models import InvalidResponse, Question, Response
-from ..validators.schema_validator import SchemaValidator
+from llm_distiller.database.models import InvalidResponse, Question, Response
+from llm_distiller.validators.schema_validator import SchemaValidator
 from .manager import LLMProviderManager
 from .models import QuestionTask, WorkerResult
 
@@ -63,7 +63,7 @@ class QuestionWorker:
             
             # Extract thinking from response if not already present
             if not hasattr(result, 'thinking') or result.thinking is None:
-                from ..llm.base import ThinkingExtractor
+                from llm_distiller.llm.base import ThinkingExtractor
                 # Use the ThinkingExtractor utility
                 cleaned_content, thinking = ThinkingExtractor.extract_thinking(result.response_text or "")
                 result.response_text = cleaned_content
