@@ -185,10 +185,11 @@ class Response(BaseModel):
                         nullable=False, index=True)
     
     # Core fields
-    model_name = Column(String(100), nullable=False, index=True)
+    model_name = Column(String(100), nullable=False)
     model_config = Column(Text, nullable=False)  # JSON string
     reasoning = Column(Text, nullable=True)
     answer = Column(Text, nullable=False)
+    thinking = Column(Text, nullable=True)  # Model reasoning/thinking process
     is_correct = Column(Boolean, nullable=True, index=True)  # NULL = unvalidated
     
     # Relationships
@@ -307,6 +308,7 @@ class InvalidResponse(BaseModel):
     model_config = Column(Text, nullable=False)
     reasoning = Column(Text, nullable=True)
     answer = Column(Text, nullable=False)
+    thinking = Column(Text, nullable=True)  # Model reasoning/thinking process
     validation_error = Column(Text, nullable=False)
     error_type = Column(String(50), nullable=False, index=True)
     

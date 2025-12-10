@@ -9,6 +9,73 @@ De LLM client is ontworpen voor:
 - **Rate limiting**: Intelligent rate limiting met API feedback
 - **Error handling**: Robuste error handling en retry logic
 - **Flexibility**: Configuratiebare parameters per provider
+- **Thinking extraction**: Automatische extractie van model reasoning processen
+
+## 🧠 Thinking Extraction
+
+### Thinking Extraction Functionaliteit
+De LLM client ondersteunt automatische extractie van thinking/reasoning uit model responses:
+
+```python
+from llm.base import ThinkingExtractor
+
+# Extract thinking from response with tags
+response = """<thinking>
+Ik moet dit stap voor stap analyseren.
+Eerst begrijp ik de vraag.
+Dan formuleer ik een antwoord.
+</thinking>
+
+Dit is het uiteindelijke antwoord."""
+
+cleaned_content, thinking = ThinkingExtractor.extract_thinking(response)
+print(f"Cleaned: {cleaned_content}")
+print(f"Thinking: {thinking}")
+```
+
+### Ondersteunde Thinking Formaten
+
+#### 1. Thinking Tags
+```xml
+<thinking>
+Dit is de reasoning van het model.
+Het wordt automatisch geëxtraheerd.
+</thinking>
+
+Dit is het schone antwoord.
+```
+
+#### 2. Reasoning Tags
+```xml
+<reasoning>
+Alternatieve reasoning tags worden ook ondersteund.
+Deze functie is backwards compatible.
+</reasoning>
+
+Antwoord zonder reasoning tags.
+```
+
+#### 3. Separate Reasoning (Future Models)
+```python
+# Voor toekomstige modellen die separate reasoning teruggeven
+separate_reasoning = "Dit is de separate reasoning van het model"
+response_text = "Dit is het antwoord."
+
+cleaned_content, thinking = ThinkingExtractor.extract_thinking(
+    response_text, separate_reasoning
+)
+```
+
+### Database Opslag
+Thinking wordt opgeslagen in de `thinking` kolom van:
+- `responses` tabel voor geldige responses
+- `invalid_responses` tabel voor ongeldige responses
+
+### Processing Flow
+1. **Response Generation**: LLM genereert response met mogelijke thinking tags
+2. **Thinking Extraction**: ThinkingExtractor haalt reasoning uit response
+3. **Content Cleaning**: Thinking tags worden verwijderd uit de response content
+4. **Database Storage**: Schone content en thinking worden apart opgeslagen
 
 ## 🏗️ Client Architecture
 
@@ -43,6 +110,7 @@ class LLMResponse:
     """Standardized LLM response"""
     content: str
     reasoning: Optional[str] = None
+    thinking: Optional[str] = None  # Model reasoning/thinking process
     model: str = ""
     usage: Optional[Dict[str, int]] = None
     finish_reason: Optional[str] = None
@@ -193,9 +261,15 @@ class OpenAIProvider(BaseLLMProvider):
             if hasattr(choice.message, 'reasoning_content'):
                 reasoning = choice.message.reasoning_content
             
+            # Extract thinking from response content
+            from ..base import ThinkingExtractor
+            separate_reasoning = getattr(choice.message, 'reasoning', None)
+            cleaned_content, thinking = ThinkingExtractor.extract_thinking(content, separate_reasoning)
+            
             return LLMResponse(
-                content=content,
+                content=cleaned_content,
                 reasoning=reasoning,
+                thinking=thinking,
                 model=response.model,
                 usage={
                     'prompt_tokens': response.usage.prompt_tokens if response.usage else 0,

@@ -96,6 +96,7 @@ class WorkerResult:
     model_name: str
     success: bool
     response_text: Optional[str] = None
+    thinking: Optional[str] = None
     error_message: Optional[str] = None
     error_type: Optional[str] = None
     tokens_used: Optional[int] = None

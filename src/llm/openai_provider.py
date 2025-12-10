@@ -63,11 +63,23 @@ class OpenAIProvider(BaseLLMProvider):
 
             content = response.choices[0].message.content or ""
             tokens_used = response.usage.total_tokens if response.usage else None
+            
+            # Extract thinking from response
+            # Check if model provides separate reasoning (e.g., in message.reasoning or similar)
+            separate_reasoning = None
+            message = response.choices[0].message
+            if hasattr(message, 'reasoning') and getattr(message, 'reasoning', None):
+                separate_reasoning = getattr(message, 'reasoning')
+            
+            # Extract thinking using ThinkingExtractor
+            from .base import ThinkingExtractor
+            cleaned_content, thinking = ThinkingExtractor.extract_thinking(content, separate_reasoning)
 
             return ParsedResponse(
-                content=content,
+                content=cleaned_content,
                 tokens_used=tokens_used,
                 model=response.model,
+                thinking=thinking,
                 metadata={
                     "processing_time_ms": processing_time,
                     "finish_reason": response.choices[0].finish_reason,
@@ -96,10 +108,10 @@ class OpenAIProvider(BaseLLMProvider):
 
     def parse_response(self, raw_response: Any) -> ParsedResponse:
         """Parse OpenAI API response.
-
+        
         Args:
             raw_response: Raw response from OpenAI API
-
+            
         Returns:
             Normalized parsed response
         """
@@ -107,11 +119,22 @@ class OpenAIProvider(BaseLLMProvider):
         # For the async client, we handle parsing directly in generate_response
         content = raw_response.choices[0].message.content or ""
         tokens_used = raw_response.usage.total_tokens if raw_response.usage else None
+        
+        # Extract thinking from response
+        separate_reasoning = None
+        message = raw_response.choices[0].message
+        if hasattr(message, 'reasoning') and getattr(message, 'reasoning', None):
+            separate_reasoning = getattr(message, 'reasoning')
+        
+        # Extract thinking using ThinkingExtractor
+        from .base import ThinkingExtractor
+        cleaned_content, thinking = ThinkingExtractor.extract_thinking(content, separate_reasoning)
 
         return ParsedResponse(
-            content=content,
+            content=cleaned_content,
             tokens_used=tokens_used,
             model=raw_response.model,
+            thinking=thinking,
             metadata={
                 "finish_reason": raw_response.choices[0].finish_reason,
                 "prompt_tokens": (

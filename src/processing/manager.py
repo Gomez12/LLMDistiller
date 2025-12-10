@@ -180,6 +180,7 @@ class LLMProviderManager:
                     model_name=response.model or provider.model_name,
                     success=True,
                     response_text=response.content,
+                    thinking=response.thinking,
                     tokens_used=response.tokens_used,
                     processing_time_ms=response.metadata.get("processing_time_ms"),
                 )

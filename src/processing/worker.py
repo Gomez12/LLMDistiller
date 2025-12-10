@@ -61,8 +61,18 @@ class QuestionWorker:
             # Set question ID
             result.question_id = task.question_id
             
+            # Extract thinking from response if not already present
+            if not hasattr(result, 'thinking') or result.thinking is None:
+                from ..llm.base import ThinkingExtractor
+                # Use the ThinkingExtractor utility
+                cleaned_content, thinking = ThinkingExtractor.extract_thinking(result.response_text or "")
+                result.response_text = cleaned_content
+                result.thinking = thinking
+            
             logger.info(f"Processing question {task.question_id} with provider: {result.provider_name}")
             logger.debug(f"[DEBUG] Provider response - Success: {result.success}, Model: {result.model_name}, Tokens: {result.tokens_used}")
+            if result.thinking:
+                logger.debug(f"[DEBUG] Extracted thinking (first 200 chars): {result.thinking[:200]}")
             
             if not result.success:
                 # Store as invalid response with verbose error logging
@@ -104,6 +114,7 @@ class QuestionWorker:
                         model_name=result.model_name,
                         success=False,
                         response_text=result.response_text,
+                        thinking=getattr(result, 'thinking', None),
                         error_message="Schema validation failed",
                         error_type="schema_validation",
                         validation_errors=validation_errors,
@@ -217,6 +228,7 @@ class QuestionWorker:
                 provider_name=result.provider_name,
                 model_name=result.model_name,
                 response_text=result.response_text,
+                thinking=getattr(result, 'thinking', None),
                 tokens_used=result.tokens_used,
                 processing_time_ms=result.processing_time_ms,
                 # Cost calculation would go here if implemented
@@ -238,6 +250,7 @@ class QuestionWorker:
                 provider_name=result.provider_name,
                 model_name=result.model_name,
                 response_text=result.response_text or "",
+                thinking=getattr(result, 'thinking', None),
                 error_message=result.error_message or "Unknown error",
                 error_type=result.error_type or "unknown",
                 tokens_used=result.tokens_used,

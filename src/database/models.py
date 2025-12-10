@@ -58,6 +58,7 @@ class Response(Base):
     provider_name = Column(String(50), nullable=False, index=True)
     model_name = Column(String(100), nullable=False)
     response_text = Column(Text, nullable=False)
+    thinking = Column(Text, nullable=True)  # Model reasoning/thinking process
     is_correct = Column(Boolean, nullable=True)  # NULL = not manually validated
     tokens_used = Column(Integer, nullable=True)
     cost = Column(
@@ -93,6 +94,7 @@ class InvalidResponse(Base):
     provider_name = Column(String(50), nullable=False, index=True)
     model_name = Column(String(100), nullable=False)
     response_text = Column(Text, nullable=False)
+    thinking = Column(Text, nullable=True)  # Model reasoning/thinking process
     error_message = Column(Text, nullable=False)
     error_type = Column(
         String(50), nullable=False
