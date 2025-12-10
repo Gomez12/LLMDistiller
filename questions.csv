@@ -1,3 +1,4 @@
-category,question,answer_schema
-math,"What is 2+2?","{\"type\": \"object\", \"properties\": {\"answer\": {\"type\": \"number\"}}}"
-science,"What is H2O?","{""type"": ""object\", \"properties\": {\"answer\": {\"type\": \"string\"}}}"
+json_id,category,question,answer_schema
+1,math,"What is 2+2? Answer only in json with the following format: {""answer"": number}","{""type"": ""object"", ""properties"": {""answer"": {""type"": ""number""}}, ""required"": [""answer""]}"
+2,science,"What is the water? Answer only in json with the following format: {""answer"": string}","{""type"": ""object"", ""properties"": {""answer"": {""type"": ""string""}}, ""required"": [""formula""]}"
+3,history,"Who was the first president of the United States? Answer only in json with the following format: {""answer"": string}","{""type"": ""object"", ""properties"": {""name"": {""type"": ""string""}, ""year"": {""type"": ""number""}}, ""required"": [""name""]}"
