@@ -316,7 +316,7 @@ jobs:
         path: site/
 
     - name: Upload to GitHub Pages
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v4
       with:
         path: site/
 
