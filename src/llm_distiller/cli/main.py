@@ -25,6 +25,10 @@ def cli(ctx, config: Optional[str]):
     ctx.obj["db_manager"] = DatabaseManager(
         database_url=ctx.obj["settings"].database.url,
         echo=ctx.obj["settings"].database.echo,
+        pool_size=ctx.obj["settings"].database.pool_size,
+        max_overflow=ctx.obj["settings"].database.max_overflow,
+        pool_pre_ping=ctx.obj["settings"].database.pool_pre_ping,
+        pool_recycle=ctx.obj["settings"].database.pool_recycle,
     )
 
 

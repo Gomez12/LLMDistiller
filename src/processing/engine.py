@@ -13,6 +13,7 @@ from .manager import LLMProviderManager
 from .models import ProcessingResult, ProcessingStats, QuestionTask, ProcessingStatus, WorkerResult
 from .queue import QuestionQueue
 from .worker import QuestionWorker
+from .batcher import ResponseBatcher
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,18 @@ class ProcessingEngine:
         self.settings = settings
         self.queue = QuestionQueue()
         self.provider_manager = LLMProviderManager(settings)
+        
+        # Initialize response batcher for performance
+        self.response_batcher = ResponseBatcher(
+            db_manager=db_manager,
+            batch_size=100  # Configurable batch size
+        )
+        
         self.worker = QuestionWorker(
             provider_manager=self.provider_manager,
             db_manager=db_manager,
-            validate_responses=settings.processing.validate_responses
+            validate_responses=settings.processing.validate_responses,
+            response_batcher=self.response_batcher
         )
         self.workers: List[QuestionWorker] = []
         self._running = False
@@ -109,6 +118,9 @@ class ProcessingEngine:
                 result.stats.end_time - result.stats.start_time
             ).total_seconds()
             
+            # Flush any remaining batched responses
+            await self.response_batcher.flush_all()
+            
             # Final statistics
             await self._update_final_stats(result)
             
@@ -122,7 +134,7 @@ class ProcessingEngine:
         category: Optional[str], 
         limit: Optional[int]
     ) -> List[dict]:
-        """Load questions from database.
+        """Load questions from database with pagination to prevent memory spikes.
         
         Args:
             category: Filter by category
@@ -131,35 +143,61 @@ class ProcessingEngine:
         Returns:
             List of question dictionaries to process
         """
-        async with self.db_manager.async_session_scope() as session:
-            query = session.query(Question)
-            
-            # Filter out questions that already have responses
-            from llm_distiller.database.models import Response
-            query = query.outerjoin(Response).filter(Response.id.is_(None))
-            
-            if category:
-                query = query.filter(Question.category == category)
-            
-            if limit:
-                query = query.limit(limit)
-            
-            questions = query.all()
-            
-            # Convert to dictionaries to avoid session binding issues
-            return [
-                {
-                    'id': q.id,
-                    'json_id': q.json_id,
-                    'category': q.category,
-                    'question_text': q.question_text,
-                    'golden_answer': q.golden_answer,
-                    'answer_schema': q.answer_schema,
-                    'created_at': q.created_at,
-                    'updated_at': q.updated_at
-                }
-                for q in questions
-            ]
+        all_questions = []
+        batch_size = 1000  # Load questions in batches to prevent memory issues
+        offset = 0
+        
+        while True:
+            async with self.db_manager.async_session_scope() as session:
+                query = session.query(Question)
+                
+                # Filter out questions that already have responses
+                from llm_distiller.database.models import Response
+                query = query.outerjoin(Response).filter(Response.id.is_(None))
+                
+                if category:
+                    query = query.filter(Question.category == category)
+                
+                # Apply pagination
+                batch_query = query.offset(offset).limit(batch_size)
+                if limit:
+                    batch_query = batch_query.limit(min(batch_size, limit - len(all_questions)))
+                
+                questions = batch_query.all()
+                
+                if not questions:
+                    break
+                
+                # Convert to dictionaries to avoid session binding issues
+                batch_dicts = [
+                    {
+                        'id': q.id,
+                        'json_id': q.json_id,
+                        'category': q.category,
+                        'question_text': q.question_text,
+                        'golden_answer': q.golden_answer,
+                        'answer_schema': q.answer_schema,
+                        'created_at': q.created_at,
+                        'updated_at': q.updated_at
+                    }
+                    for q in questions
+                ]
+                
+                all_questions.extend(batch_dicts)
+                
+                # Stop if we've reached the limit
+                if limit and len(all_questions) >= limit:
+                    all_questions = all_questions[:limit]
+                    break
+                
+                # Move to next batch
+                offset += batch_size
+                
+                # If we got fewer questions than batch_size, we're done
+                if len(questions) < batch_size:
+                    break
+        
+        return all_questions
     
     async def _run_processing(self, result: ProcessingResult) -> None:
         """Run the main processing loop.
@@ -175,7 +213,14 @@ class ProcessingEngine:
         # Create worker tasks
         worker_tasks = []
         for i in range(batch_size):
-            worker_task = asyncio.create_task(self._worker_loop(result))
+            # Create a separate worker for each thread with shared batcher
+            worker = QuestionWorker(
+                provider_manager=self.provider_manager,
+                db_manager=self.db_manager,
+                validate_responses=self.settings.processing.validate_responses,
+                response_batcher=self.response_batcher
+            )
+            worker_task = asyncio.create_task(self._worker_loop(result, worker))
             worker_tasks.append(worker_task)
             logger.debug(f"[DEBUG] Created worker task {i}")
         
@@ -219,7 +264,7 @@ class ProcessingEngine:
             self._running = False
             logger.info(f"[DEBUG] Main processing loop completed")
     
-    async def _worker_loop(self, result: ProcessingResult) -> None:
+    async def _worker_loop(self, result: ProcessingResult, worker: QuestionWorker) -> None:
         """Worker loop for processing questions.
         
         Args:
@@ -242,7 +287,7 @@ class ProcessingEngine:
                 
                 # Process the question
                 logger.debug(f"[DEBUG] Worker {worker_id} starting processing of question {task.question_id}")
-                worker_result = await self.worker.process_question(task)
+                worker_result = await worker.process_question(task)
                 logger.debug(f"[DEBUG] Worker {worker_id} completed processing of question {task.question_id}")
                 logger.debug(f"[DEBUG] Worker result: {worker_result}")
                 

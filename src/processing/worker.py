@@ -22,7 +22,8 @@ class QuestionWorker:
         self, 
         provider_manager: LLMProviderManager,
         db_manager,
-        validate_responses: bool = True
+        validate_responses: bool = True,
+        response_batcher: Optional['ResponseBatcher'] = None
     ):
         """Initialize the question worker.
         
@@ -30,11 +31,13 @@ class QuestionWorker:
             provider_manager: LLM provider manager
             db_manager: Database manager for storing results
             validate_responses: Whether to validate responses against schema
+            response_batcher: Optional batcher for database operations
         """
         self.provider_manager = provider_manager
         self.db_manager = db_manager
         self.validate_responses = validate_responses
         self.schema_validator = SchemaValidator() if validate_responses else None
+        self.response_batcher = response_batcher
     
     async def process_question(self, task: QuestionTask) -> WorkerResult:
         """Process a single question.
@@ -88,7 +91,10 @@ class QuestionWorker:
                 logger.error(f"[DEBUG] Full task context: {task}")
                 logger.error(f"[DEBUG] Full result context: {result}")
                 
-                await self._store_invalid_response(task, result)
+                if self.response_batcher:
+                    await self.response_batcher.add_invalid_response(task, result)
+                else:
+                    await self._store_invalid_response(task, result)
                 return result
             
             # Validate response if schema validation is enabled
@@ -123,11 +129,17 @@ class QuestionWorker:
                         tokens_used=result.tokens_used,
                         processing_time_ms=result.processing_time_ms
                     )
-                    await self._store_invalid_response(task, invalid_result)
+                    if self.response_batcher:
+                        await self.response_batcher.add_invalid_response(task, invalid_result)
+                    else:
+                        await self._store_invalid_response(task, invalid_result)
                     return invalid_result
             
             # Store valid response
-            await self._store_valid_response(task, result)
+            if self.response_batcher:
+                await self.response_batcher.add_valid_response(task, result)
+            else:
+                await self._store_valid_response(task, result)
             
             # Calculate processing time
             processing_time = int((time.time() - start_time) * 1000)
@@ -157,7 +169,10 @@ class QuestionWorker:
                 processing_time_ms=int((time.time() - start_time) * 1000)
             )
             
-            await self._store_invalid_response(task, error_result)
+            if self.response_batcher:
+                await self.response_batcher.add_invalid_response(task, error_result)
+            else:
+                await self._store_invalid_response(task, error_result)
             return error_result
     
     async def _validate_response(

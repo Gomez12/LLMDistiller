@@ -12,6 +12,10 @@ class DatabaseConfig(BaseModel):
 
     url: str = Field(default="sqlite:///./llm_distiller.db", description="Database URL")
     echo: bool = Field(default=False, description="Enable SQL query logging")
+    pool_size: int = Field(default=20, description="Database connection pool size")
+    max_overflow: int = Field(default=30, description="Maximum overflow connections")
+    pool_pre_ping: bool = Field(default=True, description="Validate connections before use")
+    pool_recycle: int = Field(default=3600, description="Connection recycle time in seconds")
 
 
 class RateLimitConfig(BaseModel):

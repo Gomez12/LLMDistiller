@@ -12,14 +12,26 @@ from .base import Base
 class DatabaseManager:
     """Central database connection and session management."""
 
-    def __init__(self, database_url: str, echo: bool = False):
+    def __init__(self, database_url: str, echo: bool = False, pool_size: int = 20, 
+                 max_overflow: int = 30, pool_pre_ping: bool = True, pool_recycle: int = 3600):
         """Initialize database manager.
 
         Args:
             database_url: Database connection URL
             echo: Whether to echo SQL statements
+            pool_size: Database connection pool size
+            max_overflow: Maximum overflow connections
+            pool_pre_ping: Validate connections before use
+            pool_recycle: Connection recycle time in seconds
         """
-        self.engine = create_engine(database_url, echo=echo)
+        self.engine = create_engine(
+            database_url, 
+            echo=echo,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_pre_ping=pool_pre_ping,
+            pool_recycle=pool_recycle
+        )
         self.SessionLocal = sessionmaker(bind=self.engine)
 
     def create_tables(self) -> None:

@@ -74,6 +74,10 @@ def test_db_manager(test_settings: Settings) -> DatabaseManager:
     return DatabaseManager(
         database_url=test_settings.database.url,
         echo=test_settings.database.echo,
+        pool_size=test_settings.database.pool_size,
+        max_overflow=test_settings.database.max_overflow,
+        pool_pre_ping=test_settings.database.pool_pre_ping,
+        pool_recycle=test_settings.database.pool_recycle,
     )
 
 
