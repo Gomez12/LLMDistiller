@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-distiller"
-version = "0.1.0"
+version = "0.1.1"
 description = "A tool for distilling and processing LLM datasets"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -64,11 +64,11 @@ Repository = "https://github.com/Gomez12/LLMDistiller"
 Issues = "https://github.com/Gomez12/LLMDistiller/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+where = ["src"]
+include = ["*"]
 
 [tool.setuptools.package-dir]
-"" = "."
+"" = "src"
 
 [tool.black]
 line-length = 88
