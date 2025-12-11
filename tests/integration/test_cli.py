@@ -207,6 +207,80 @@ class TestCLICommands:
         # Or if it fails at provider init
         assert 'No LLM provider configured' in result.output or 'Provider' in result.output or 'Failed to initialize provider' in result.output
 
+    def test_export_training_command_default(self, runner, test_db_manager, temp_output_dir):
+        """Test export-training command with default settings."""
+        mock_exporter = Mock()
+        mock_exporter.export_training_jsonl.return_value = 7
+        
+        output_file = str(temp_output_dir / "training_data.jsonl")
+        
+        with patch('llm_distiller.cli.main.DatasetExporter', return_value=mock_exporter):
+            with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
+                result = runner.invoke(cli, ['export-training', '--output', output_file])
+                
+                assert result.exit_code == 0
+                assert f'Exporting training data to {output_file}' in result.output
+                assert 'Successfully exported 7 training records' in result.output
+                mock_exporter.export_training_jsonl.assert_called_once_with(output_file, False, None)
+
+    def test_export_training_command_validated_only(self, runner, test_db_manager, temp_output_dir):
+        """Test export-training command with validated-only flag."""
+        mock_exporter = Mock()
+        mock_exporter.export_training_jsonl.return_value = 4
+        
+        output_file = str(temp_output_dir / "validated_training.jsonl")
+        
+        with patch('llm_distiller.cli.main.DatasetExporter', return_value=mock_exporter):
+            with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
+                result = runner.invoke(cli, ['export-training', '--output', output_file, '--validated-only'])
+                
+                assert result.exit_code == 0
+                assert 'Exporting only validated responses' in result.output
+                assert 'Successfully exported 4 training records' in result.output
+                mock_exporter.export_training_jsonl.assert_called_once_with(output_file, True, None)
+
+    def test_export_training_command_with_category(self, runner, test_db_manager, temp_output_dir):
+        """Test export-training command with category filter."""
+        mock_exporter = Mock()
+        mock_exporter.export_training_jsonl.return_value = 3
+        
+        output_file = str(temp_output_dir / "math_training.jsonl")
+        
+        with patch('llm_distiller.cli.main.DatasetExporter', return_value=mock_exporter):
+            with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
+                result = runner.invoke(cli, ['export-training', '--output', output_file, '--category', 'math'])
+                
+                assert result.exit_code == 0
+                assert 'Filtering by category: math' in result.output
+                assert 'Successfully exported 3 training records' in result.output
+                mock_exporter.export_training_jsonl.assert_called_once_with(output_file, False, 'math')
+
+    def test_export_training_command_default_filename(self, runner, test_db_manager):
+        """Test export-training command with default filename."""
+        mock_exporter = Mock()
+        mock_exporter.export_training_jsonl.return_value = 5
+        
+        with patch('llm_distiller.cli.main.DatasetExporter', return_value=mock_exporter):
+            with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
+                result = runner.invoke(cli, ['export-training'])
+                
+                assert result.exit_code == 0
+                assert 'Exporting training data to training_data.jsonl' in result.output
+                assert 'Successfully exported 5 training records' in result.output
+                mock_exporter.export_training_jsonl.assert_called_once_with('training_data.jsonl', False, None)
+
+    def test_export_training_command_with_exception(self, runner, test_db_manager):
+        """Test export-training command with exception."""
+        mock_exporter = Mock()
+        mock_exporter.export_training_jsonl.side_effect = Exception("Training export failed")
+        
+        with patch('llm_distiller.cli.main.DatasetExporter', return_value=mock_exporter):
+            with patch('llm_distiller.cli.main.DatabaseManager', return_value=test_db_manager):
+                result = runner.invoke(cli, ['export-training'])
+                
+                assert result.exit_code == 0
+                assert 'Export failed: Training export failed' in result.output
+
     def test_config_option(self, runner, temp_config_file):
         """Test CLI with custom config file."""
         result = runner.invoke(cli, ['--config', temp_config_file, '--help'])
