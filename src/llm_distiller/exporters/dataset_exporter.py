@@ -191,6 +191,58 @@ class DatasetExporter:
 
             return records
 
+    def export_training_jsonl(
+        self,
+        output_path: str,
+        validated_only: bool = False,
+        category: Optional[str] = None,
+    ) -> int:
+        """Export data in training JSONL format with flat structure.
+
+        Args:
+            output_path: Path to output file
+            validated_only: Export only validated responses
+            category: Filter by category
+
+        Returns:
+            Number of records exported
+        """
+        records = self._get_export_data(validated_only, category)
+        training_records = self._transform_to_training_format(records)
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            for record in training_records:
+                json_line = json.dumps(record, ensure_ascii=False)
+                f.write(json_line + "\n")
+
+        return len(training_records)
+
+    def _transform_to_training_format(self, records: List[dict]) -> List[dict]:
+        """Transform nested records to flat training format.
+
+        Args:
+            records: List of nested question/response records
+
+        Returns:
+            List of flat training records
+        """
+        training_records = []
+        for record in records:
+            question_data = record.get("question", {})
+            response_data = record.get("response", {})
+            
+            training_record = {
+                "question": question_data.get("question_text"),
+                "reasoning": response_data.get("thinking"),
+                "answer": response_data.get("response_text"),
+                "system_prompt": question_data.get("system_prompt"),
+                "category": question_data.get("category"),
+                "golden_answer": question_data.get("golden_answer"),
+            }
+            training_records.append(training_record)
+        
+        return training_records
+
     def get_export_summary(self) -> dict:
         """Get summary of available data for export.
 

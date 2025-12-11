@@ -439,6 +439,51 @@ llm-distiller export --category math --format csv --output math_dataset.csv
 llm-distiller export --output all_data.jsonl
 ```
 
+### Export Training Dataset
+```bash
+llm-distiller export-training [OPTIONS]
+```
+
+#### Options
+```bash
+--output PATH         Output bestand (default: training_data.jsonl)
+--validated-only      Exporteer alleen gevalideerde antwoorden
+--category TEXT       Filter op categorie
+```
+
+#### Training Format
+Exporteert data in een plat JSONL formaat geschikt voor fine-tuning:
+
+```json
+{"question": "What is 2+2?", "reasoning": "I need to add 2 and 2 together. 2+2 = 4.", "answer": "4", "system_prompt": "You are a helpful math assistant.", "category": "math", "golden_answer": "4"}
+{"question": "What is H2O?", "reasoning": "H2O is the chemical formula for water, consisting of 2 hydrogen atoms and 1 oxygen atom.", "answer": "Water", "system_prompt": "You are a chemistry expert.", "category": "science", "golden_answer": "Water"}
+```
+
+#### Velden
+| Veld | Beschrijving | Bron |
+|------|-------------|------|
+| `question` | De originele vraag | `question.question_text` |
+| `reasoning` | Model reasoning/thinking proces | `response.thinking` |
+| `answer` | Het gegenereerde antwoord | `response.response_text` |
+| `system_prompt` | System prompt gebruikt voor LLM | `question.system_prompt` |
+| `category` | Categorie van de vraag | `question.category` |
+| `golden_answer` | Referentie antwoord | `question.golden_answer` |
+
+#### Voorbeelden
+```bash
+# Exporteer alle training data
+llm-distiller export-training
+
+# Exporteer alleen gevalideerde responses
+llm-distiller export-training --validated-only --output validated_training.jsonl
+
+# Exporteer specifieke categorie
+llm-distiller export-training --category math --output math_training.jsonl
+
+# Combineer opties
+llm-distiller export-training --validated-only --category science --output science_validated.jsonl
+```
+
 ### Export Invalid Responses
 ```bash
 llm-distiller export invalid [OPTIONS]

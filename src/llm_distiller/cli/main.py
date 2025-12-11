@@ -186,6 +186,34 @@ def export(ctx, format: str, output: Optional[str], validated_only: bool):
         click.echo(f"❌ Export failed: {str(e)}")
 
 
+@cli.command(name="export-training")
+@click.option("--output", "-o", type=click.Path(), help="Output file path")
+@click.option("--validated-only", is_flag=True, help="Export only validated responses")
+@click.option("--category", type=str, help="Filter by category")
+@click.pass_context
+def export_training(ctx, output: Optional[str], validated_only: bool, category: Optional[str]):
+    """Export data in training JSONL format with flat structure."""
+    db_manager = ctx.obj["db_manager"]
+
+    if not output:
+        output = "training_data.jsonl"
+
+    click.echo(f"Exporting training data to {output}...")
+    if validated_only:
+        click.echo("Exporting only validated responses")
+    if category:
+        click.echo(f"Filtering by category: {category}")
+
+    exporter = DatasetExporter(db_manager)
+
+    try:
+        count = exporter.export_training_jsonl(output, validated_only, category)
+        click.echo(f"✅ Successfully exported {count} training records to {output}")
+
+    except Exception as e:
+        click.echo(f"❌ Export failed: {str(e)}")
+
+
 @cli.command()
 @click.pass_context
 def status(ctx):
