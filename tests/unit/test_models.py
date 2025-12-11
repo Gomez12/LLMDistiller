@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from llm_distiller.database.models import Question, Response, InvalidResponse
+from llm_distiller.database.models import InvalidResponse, Question, Response
 
 
 class TestQuestion:

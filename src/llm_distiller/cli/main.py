@@ -8,7 +8,7 @@ from typing import Optional
 import click
 
 from ..config import Settings
-from ..database import DatabaseManager, Question, Response, InvalidResponse
+from ..database import DatabaseManager, InvalidResponse, Question, Response
 from ..exporters import DatasetExporter
 from ..importers import CSVImporter
 
@@ -100,8 +100,13 @@ def import_data(ctx, file_path: str, type: str, default_correct: Optional[str]):
 @click.option(
     "--system-prompt", "-s", help="Default system prompt to use for all questions"
 )
+@click.option(
+    "--failover-strategy",
+    type=click.Choice(["none", "preferred_only", "rate_limit_only", "all"]),
+    help="Override failover strategy for this run"
+)
 @click.pass_context
-def process(ctx, category: Optional[str], limit: int, provider: Optional[str], system_prompt: Optional[str]):
+def process(ctx, category: Optional[str], limit: int, provider: Optional[str], system_prompt: Optional[str], failover_strategy: Optional[str]):
     """Process questions with LLM."""
     settings = ctx.obj["settings"]
     db_manager = ctx.obj["db_manager"]
@@ -117,7 +122,7 @@ def process(ctx, category: Optional[str], limit: int, provider: Optional[str], s
         click.echo(f"Using provider: {provider}")
     
     async def run_processing():
-        result = await engine.process_questions(category, limit, provider, system_prompt)
+        result = await engine.process_questions(category, limit, provider, system_prompt, failover_strategy)
         
         # Report results
         click.echo(f"\nProcessing complete!")

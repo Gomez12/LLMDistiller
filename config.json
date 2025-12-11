@@ -43,7 +43,7 @@
       }
     },
     "azure_openai": {
-      "type": "azure_openai",
+      "type": "openai",
       "api_key": "",
       "base_url": "https://your-resource.openai.azure.com/",
       "model": "gpt-4",

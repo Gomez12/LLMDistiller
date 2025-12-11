@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
 from enum import Enum
+from typing import Dict, List, Optional
 
 
 class ProcessingStatus(Enum):
@@ -78,6 +78,7 @@ class QuestionTask:
     answer_schema: Optional[str]
     system_prompt: Optional[str] = None
     provider_name: Optional[str] = None
+    failover_strategy: Optional[str] = None
     retry_count: int = 0
     max_retries: int = 3
     status: ProcessingStatus = ProcessingStatus.PENDING

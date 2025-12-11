@@ -1,8 +1,9 @@
 """Integration tests for CLI commands."""
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 from click.testing import CliRunner
-from unittest.mock import Mock, patch, AsyncMock
 
 from llm_distiller.cli.main import cli
 

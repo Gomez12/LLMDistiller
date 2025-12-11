@@ -10,7 +10,14 @@ import pytest
 import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 
-from llm_distiller.config.settings import Settings, DatabaseConfig, ProviderConfig, RateLimitConfig, ProcessingConfig, LoggingConfig
+from llm_distiller.config.settings import (
+    DatabaseConfig,
+    LoggingConfig,
+    ProcessingConfig,
+    ProviderConfig,
+    RateLimitConfig,
+    Settings,
+)
 from llm_distiller.database.base import Base
 from llm_distiller.database.manager import DatabaseManager
 

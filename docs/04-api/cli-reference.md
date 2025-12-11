@@ -224,6 +224,8 @@ llm-distiller process [OPTIONS]
 --category TEXT       Filter by category
 --limit INTEGER       Number of questions to process (default: 10)
 --provider TEXT       LLM provider to use
+--system-prompt TEXT  Default system prompt to use for all questions
+--failover-strategy TEXT  Override failover strategy (none/preferred_only/rate_limit_only/all)
 ```
 
 #### Voorbeelden
@@ -239,17 +241,43 @@ llm-distiller process --provider openai --limit 5
 
 # Combineer filters
 llm-distiller process --category science --limit 20 --provider gpt4
+
+# Geen failover (default gedrag)
+llm-distiller process --provider openai_main --failover-strategy none
+
+# Failover alleen bij rate limits
+llm-distiller process --provider openai_main --failover-strategy rate_limit_only
+
+# Volledige failover naar alle providers
+llm-distiller process --provider openai_main --failover-strategy all
 ```
 
 #### Processing Features
 - **Parallel Processing**: Verwerkt vragen in batches (configurable batch size)
 - **Rate Limiting**: Respecteert API rate limits per provider
 - **Retry Logic**: Automatische retries met exponential backoff
-- **Multi-Provider Support**: Failover tussen providers
+- **Configurable Failover**: Strategieën voor provider failover (none/preferred_only/rate_limit_only/all)
+- **Multi-Provider Support**: Ondersteuning voor meerdere LLM providers
 - **JSON Schema Validation**: Valideert responses tegen schema
 - **Progress Tracking**: Real-time voortgang en statistieken
 - **Error Handling**: Gedetailleerde error reporting
 - **Provider Logging**: Volledige logging van provider selectie en gebruik op INFO niveau
+
+#### Failover Strategieën
+De `--failover-strategy` optie bepaalt het gedrag wanneer een provider faalt:
+
+| Strategie | Gedrag | Use Case |
+|-----------|--------|----------|
+| `none` | Geen failover, direct falen | Strikte provider controle (default) |
+| `preferred_only` | Alleen gekozen provider gebruiken | Testing/debugging |
+| `rate_limit_only` | Failover alleen bij rate limits | Kosten controle |
+| `all` | Probeer alle providers | Maximale beschikbaarheid |
+
+**Configuratie:**
+- Default strategie: `"none"` (geen automatische failover)
+- Configureerbaar via `config.json` onder `processing.failover_strategy`
+- Override mogelijk via `--failover-strategy` CLI parameter
+- Error types voor failover: `processing.failover_on_errors` (default: `["rate_limit", "timeout"]`)
 
 #### Output Example
 ```

@@ -5,6 +5,7 @@ import logging
 from typing import List, Optional, Tuple
 
 from llm_distiller.database.models import InvalidResponse, Question, Response
+
 from .models import QuestionTask, WorkerResult
 
 logger = logging.getLogger(__name__)

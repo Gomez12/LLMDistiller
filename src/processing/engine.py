@@ -7,13 +7,20 @@ from datetime import datetime
 from typing import List, Optional
 
 from llm_distiller.config import Settings
-from llm_distiller.database.models import Question
 from llm_distiller.database.manager import DatabaseManager
+from llm_distiller.database.models import Question
+
+from .batcher import ResponseBatcher
 from .manager import LLMProviderManager
-from .models import ProcessingResult, ProcessingStats, QuestionTask, ProcessingStatus, WorkerResult
+from .models import (
+    ProcessingResult,
+    ProcessingStats,
+    ProcessingStatus,
+    QuestionTask,
+    WorkerResult,
+)
 from .queue import QuestionQueue
 from .worker import QuestionWorker
-from .batcher import ResponseBatcher
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +60,8 @@ class ProcessingEngine:
         category: Optional[str] = None,
         limit: Optional[int] = None,
         provider: Optional[str] = None,
-        default_system_prompt: Optional[str] = None
+        default_system_prompt: Optional[str] = None,
+        failover_strategy: Optional[str] = None
     ) -> ProcessingResult:
         """Process questions with LLM.
         
@@ -105,6 +113,7 @@ class ProcessingEngine:
                     answer_schema=q['answer_schema'],
                     system_prompt=system_prompt,
                     provider_name=provider,
+                    failover_strategy=failover_strategy,
                     max_retries=self.settings.processing.max_retries
                 )
                 tasks.append(task)

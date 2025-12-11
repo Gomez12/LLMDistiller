@@ -1,10 +1,11 @@
 """Unit tests for CSV importer."""
 
-import pytest
 from unittest.mock import Mock, patch
 
-from llm_distiller.importers.csv_importer import CSVImporter
+import pytest
+
 from llm_distiller.database.manager import DatabaseManager
+from llm_distiller.importers.csv_importer import CSVImporter
 
 
 class TestCSVImporter:

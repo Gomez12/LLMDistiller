@@ -1,7 +1,7 @@
 """OpenAI LLM provider implementation."""
 
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import openai
 from openai import AsyncOpenAI

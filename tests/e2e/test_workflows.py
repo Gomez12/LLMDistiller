@@ -1,10 +1,11 @@
 """End-to-end tests for quick setup workflow."""
 
-import pytest
+import os
 import subprocess
 import tempfile
-import os
 from pathlib import Path
+
+import pytest
 
 
 class TestQuickSetupWorkflow:

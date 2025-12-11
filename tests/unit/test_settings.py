@@ -1,12 +1,18 @@
 """Unit tests for configuration settings."""
 
 import os
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from llm_distiller.config.settings import (
-    Settings, DatabaseConfig, ProviderConfig, RateLimitConfig,
-    GenerationConfig, ProcessingConfig, LoggingConfig
+    DatabaseConfig,
+    GenerationConfig,
+    LoggingConfig,
+    ProcessingConfig,
+    ProviderConfig,
+    RateLimitConfig,
+    Settings,
 )
 
 

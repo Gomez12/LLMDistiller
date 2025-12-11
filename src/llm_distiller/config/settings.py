@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -98,6 +98,14 @@ class ProcessingConfig(BaseModel):
     timeout_seconds: int = Field(default=120, description="Request timeout in seconds")
     validate_responses: bool = Field(
         default=True, description="Enable JSON schema validation"
+    )
+    failover_strategy: str = Field(
+        default="none", 
+        description="Failover strategy: 'none', 'preferred_only', 'rate_limit_only', 'all'"
+    )
+    failover_on_errors: List[str] = Field(
+        default_factory=lambda: ["rate_limit", "timeout"], 
+        description="Error types that trigger failover"
     )
     generation_params: GenerationConfig = Field(
         default_factory=GenerationConfig, description="Default generation parameters"

@@ -2,7 +2,8 @@
 
 import asyncio
 from typing import List, Optional, Set
-from .models import QuestionTask, ProcessingStatus
+
+from .models import ProcessingStatus, QuestionTask
 
 
 class QuestionQueue:

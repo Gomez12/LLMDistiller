@@ -67,6 +67,8 @@
     "max_retries": 3,
     "timeout_seconds": 120,
     "validate_responses": true,
+    "failover_strategy": "none",
+    "failover_on_errors": ["rate_limit", "timeout"],
     "generation_params": {
       "temperature": 0.7,
       "max_tokens": 1000,
